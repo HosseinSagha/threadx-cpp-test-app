@@ -1,0 +1,6 @@
+doxygen/
+.settings/
+*build/
+.*project
+*.bak
+*_RAM.ld

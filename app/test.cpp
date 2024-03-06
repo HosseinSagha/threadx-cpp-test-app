@@ -225,11 +225,6 @@ void Thread3_4::entryCallback()
     LOG_ERROR("Thread 3 or 4 ThreadX error %u!", error);
 }
 
-static long Fibonacci(unsigned n)
-{
-    return n < 2 ? n : Fibonacci(n - 1) + Fibonacci(n - 2);
-}
-
 void Thread5::entryCallback()
 {
     LOG_INFO("Thread 5 entered.");

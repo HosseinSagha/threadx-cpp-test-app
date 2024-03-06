@@ -1,0 +1,148 @@
+{
+    "files.associations": {
+        "array": "cpp",
+        "atomic": "cpp",
+        "bit": "cpp",
+        "*.tcc": "cpp",
+        "bitset": "cpp",
+        "cctype": "cpp",
+        "charconv": "cpp",
+        "clocale": "cpp",
+        "cmath": "cpp",
+        "compare": "cpp",
+        "concepts": "cpp",
+        "cstdarg": "cpp",
+        "cstddef": "cpp",
+        "cstdint": "cpp",
+        "cstdio": "cpp",
+        "cstdlib": "cpp",
+        "cstring": "cpp",
+        "ctime": "cpp",
+        "cwchar": "cpp",
+        "cwctype": "cpp",
+        "deque": "cpp",
+        "map": "cpp",
+        "unordered_map": "cpp",
+        "vector": "cpp",
+        "exception": "cpp",
+        "algorithm": "cpp",
+        "functional": "cpp",
+        "iterator": "cpp",
+        "memory": "cpp",
+        "memory_resource": "cpp",
+        "numeric": "cpp",
+        "optional": "cpp",
+        "random": "cpp",
+        "regex": "cpp",
+        "string": "cpp",
+        "string_view": "cpp",
+        "system_error": "cpp",
+        "tuple": "cpp",
+        "type_traits": "cpp",
+        "utility": "cpp",
+        "initializer_list": "cpp",
+        "iomanip": "cpp",
+        "iosfwd": "cpp",
+        "istream": "cpp",
+        "limits": "cpp",
+        "new": "cpp",
+        "ostream": "cpp",
+        "ranges": "cpp",
+        "span": "cpp",
+        "sstream": "cpp",
+        "stdexcept": "cpp",
+        "streambuf": "cpp",
+        "typeinfo": "cpp",
+        "numbers": "cpp",
+        "chrono": "cpp",
+        "ratio": "cpp",
+        "format": "cpp",
+        "variant": "cpp",
+        "stop_token": "cpp",
+        "condition_variable": "cpp",
+        "mutex": "cpp",
+        "semaphore": "cpp",
+        "thread": "cpp",
+        "filesystem": "cpp",
+        "codecvt": "cpp",
+        "source_location": "cpp",
+        "stacktrace": "cpp"
+    },
+    "editor.formatOnSave": true,
+    "clang-format.executable": "clang-format",
+    "gitHistory.includeRemoteBranches": true,
+    "cmake.options.statusBarVisibility": "hidden",
+    "cmake.options.advanced": {
+        "configurePreset": {
+            "statusBarVisibility": "visible"
+        },
+        "build": {
+            "statusBarVisibility": "visible"
+        },
+        "buildTarget": {
+            "statusBarVisibility": "visible"
+        },
+        "launchTarget": {
+            "statusBarVisibility": "visible"
+        },
+        "debug": {
+            "statusBarVisibility": "visible"
+        },
+        "launch": {
+            "statusBarVisibility": "visible"
+        }
+    },
+    "cmake.copyCompileCommands": "${workspaceFolder}/_build/compile_commands.json",
+    "doxdocgen.c.commentPrefix": "///",
+    "doxdocgen.c.firstLine": "///",
+    "doxdocgen.c.lastLine": "///",
+    "doxdocgen.c.triggerSequence": "///",
+    "doxdocgen.cpp.tparamTemplate": "\\tparam {param}",
+    "doxdocgen.file.copyrightTag": [
+        "\\copyright Copyright (c) {year}"
+    ],
+    // The template for the file parameter in Doxygen.
+    "doxdocgen.file.fileTemplate": "\\file {name}",
+    // Version number for the file.
+    "doxdocgen.file.versionTag": "\\version 0.1",
+    // Set the style of the author tag and your name.  Can template {author} and {email}.
+    "doxdocgen.generic.authorTag": "\\author {author} ({email})",
+    // If this is enabled a bool return value will be split into true and false return param.
+    "doxdocgen.generic.boolReturnsTrueFalse": true,
+    // The template of the brief Doxygen line that is generated. If empty it won't get generated at all.
+    "doxdocgen.generic.briefTemplate": "{text}",
+    // The format to use for the date.
+    "doxdocgen.generic.dateFormat": "YYYY-MM-DD",
+    // The template for the date parameter in Doxygen.
+    "doxdocgen.generic.dateTemplate": "\\date {date}",
+    // Decide if you want to get smart text for certain commands.
+    "doxdocgen.generic.generateSmartText": true,
+    // Whether include type information at return.
+    "doxdocgen.generic.includeTypeAtReturn": true,
+    // How many lines the plugin should look for to find the end of the declaration. Please be aware that setting this value too low could improve the speed of comment generation by a very slim margin but the plugin also may not correctly detect all declarations or definitions anymore.
+    "doxdocgen.generic.linesToGet": 20,
+    // The order to use for the comment generation. Values can be used multiple times. Valid values are shown in default setting.
+    "doxdocgen.generic.order": [
+        "brief",
+        "empty",
+        "tparam",
+        "param",
+        "return",
+        "custom",
+        "version",
+        "author",
+        "date",
+        "copyright"
+    ],
+    "doxdocgen.generic.paramTemplate": "\\param {param}",
+    "doxdocgen.generic.returnTemplate": "\\return {type}",
+    // Decide if the values put into {name} should be split according to their casing.
+    "doxdocgen.generic.splitCasingSmartText": true,
+    "doxdocgen.generic.useGitUserName": true,
+    "doxdocgen.generic.useGitUserEmail": true,
+    // Provide intellisense and snippet for doxygen commands
+    "doxdocgen.generic.commandSuggestion": true,
+    // Add `\\` in doxygen command suggestion for better readbility (need to enable commandSuggestion)
+    "doxdocgen.generic.commandSuggestionAddPrefix": false,
+    "cortex-debug.variableUseNaturalFormat": false
+}

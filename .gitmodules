@@ -1,0 +1,3 @@
+[submodule "lib/threadx-cpp"]
+	path = lib/threadx-cpp
+	url = https://github.com/HosseinSagha/threadx-cpp.git

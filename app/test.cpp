@@ -11,6 +11,9 @@ using namespace std::chrono_literals;
 class Device
 {
   public:
+    Device &operator=(const Device &) = delete;
+    Device(const Device &) = delete;
+
     static Device &instance();
     ThreadPool m_memoryPool;
     Thread0 m_thread0;
@@ -21,6 +24,8 @@ class Device
     Thread5 m_thread5;
     Thread6_7 m_thread6;
     Thread6_7 m_thread7;
+    Thread8 m_thread8;
+    Thread9 m_thread9;
     ThreadFileSystem m_threadFileSystem;
     ThreadX::Mutex m_mutex;
     ThreadX::BinarySemaphore m_semaphore;
@@ -32,8 +37,6 @@ class Device
 
   private:
     Device();
-    Device &operator=(const Device &) = delete;
-    Device(const Device &) = delete;
 };
 
 static std::byte ramMem[20 * 512];
@@ -43,19 +46,32 @@ namespace ThreadX::Native
 extern "C" void _fx_ram_driver(FX_MEDIA *media_ptr);
 } // namespace ThreadX::Native
 
+static void statckErrorCallback(ThreadX::Thread &thread)
+{
+    LOG_ERROR("Stack Overflow in %s", thread.name().data());
+}
+
 void runTestCode()
 {
+    ThreadX::Thread::registerStackErrorNotifyCallback(statckErrorCallback);
     Device::instance();
 }
 
 Device::Device()
-    : m_memoryPool(), m_thread0(m_memoryPool, thread0StackSize, {}, 1, 1),
-      m_thread1(m_memoryPool, thread1StackSize, {}, 16, 16, 4),
-      m_thread2(m_memoryPool, thread2StackSize, {}, 16, 16, 4), m_thread3(m_memoryPool, thread3StackSize, {}, 8, 8),
-      m_thread4(m_memoryPool, thread4StackSize, {}, 8, 8), m_thread5(m_memoryPool, thread5StackSize, {}, 4, 4),
-      m_thread6(m_memoryPool, thread6StackSize, {}, 8, 8), m_thread7(m_memoryPool, thread7StackSize, {}, 8, 8),
-      m_threadFileSystem(m_memoryPool, threadFileSystemStackSize, ramMem), m_mutex(), m_semaphore(1), m_eventFlags(),
-      m_queue(m_memoryPool, queueSize, std::bind_front(&Thread2::queueCallback, &m_thread2))
+    : m_memoryPool(), m_thread0("Thread0", m_memoryPool, thread0StackSize, {}, 1, 1),
+      m_thread1("Thread1", m_memoryPool, thread1StackSize, {}, 16, 16, 4),
+      m_thread2("Thread2", m_memoryPool, thread2StackSize, {}, 16, 16, 4),
+      m_thread3("Thread3", m_memoryPool, thread3StackSize, {}, 8, 8),
+      m_thread4("Thread4", m_memoryPool, thread4StackSize, {}, 8, 8),
+      m_thread5("Thread5", m_memoryPool, thread5StackSize, {}, 4, 4),
+      m_thread6("Thread6", m_memoryPool, thread6StackSize, {}, 8, 8),
+      m_thread7("Thread7", m_memoryPool, thread7StackSize, {}, 8, 8),
+      m_thread8(
+          "Thread8", m_memoryPool, thread8StackSize, std::bind_front(&Thread8::enteryExitNotifyCallback, &m_thread8)),
+      m_thread9("Thread9", m_memoryPool, thread9StackSize),
+      m_threadFileSystem("ThreadFS", m_memoryPool, threadFileSystemStackSize, ramMem), m_mutex(),
+      m_semaphore("Semaphore1", 1), m_eventFlags("Event flags1"),
+      m_queue("Queue1", m_memoryPool, queueSize, std::bind_front(&Thread2::queueCallback, &m_thread2))
 {
 }
 
@@ -93,17 +109,19 @@ void Thread0::entryCallback()
     }
 }
 
-Thread1::Thread1(ThreadPool &pool, ThreadX::Ulong stackSize, const NotifyCallback &entryExitNotifyCallback,
-                 ThreadX::Uint priority, ThreadX::Uint preamptionThresh, ThreadX::Ulong timeSlice)
-    : Thread(pool, stackSize, entryExitNotifyCallback, priority, preamptionThresh, timeSlice),
+Thread1::Thread1(
+    std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const NotifyCallback &entryExitNotifyCallback,
+    ThreadX::Uint priority, ThreadX::Uint preamptionThresh, ThreadX::Ulong timeSlice)
+    : Thread(name, pool, stackSize, entryExitNotifyCallback, priority, preamptionThresh, timeSlice),
       m_timer1(500ms, std::bind_front(&Thread1::timerCallback, this)),
       m_timer2(1s, std::bind_front(&Thread1::timerCallback, this))
 {
 }
 
-Thread2::Thread2(ThreadPool &pool, ThreadX::Ulong stackSize, const NotifyCallback &entryExitNotifyCallback,
-                 ThreadX::Uint priority, ThreadX::Uint preamptionThresh, ThreadX::Ulong timeSlice)
-    : Thread(pool, stackSize, entryExitNotifyCallback, priority, preamptionThresh, timeSlice),
+Thread2::Thread2(
+    std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const NotifyCallback &entryExitNotifyCallback,
+    ThreadX::Uint priority, ThreadX::Uint preamptionThresh, ThreadX::Ulong timeSlice)
+    : Thread(name, pool, stackSize, entryExitNotifyCallback, priority, preamptionThresh, timeSlice),
       m_timer(2s, std::bind_front(&Thread2::timerCallback, this))
 {
 }
@@ -301,8 +319,49 @@ void Thread6_7::entryCallback()
     LOG_ERROR("Thread 6 or 7 ThreadX error %u!", error);
 }
 
-ThreadFileSystem::ThreadFileSystem(ThreadPool &pool, ThreadX::Ulong stackSize, void *driverInfoPtr)
-    : Thread(pool, stackSize), Media(driverInfoPtr)
+void Thread8::enteryExitNotifyCallback(
+    [[maybe_unused]] ThreadX::Thread &thread, const ThreadX::NotifyCondition condition)
+{
+    if (condition == ThreadX::NotifyCondition::entry)
+    {
+        LOG_INFO("Thread 8 entry callback called.");
+    }
+    else
+    {
+        LOG_INFO("Thread 8 exit callback called.");
+    }
+}
+
+void Thread8::entryCallback()
+{
+    LOG_INFO("Thread 8 entered.");
+    if (auto error{ThreadX::ThisThread::sleepFor(3s)}; error != ThreadX::Error::success)
+    {
+        LOG_ERROR("Thread 8 ThreadX error %u!", error);
+    }
+}
+
+void Thread9::entryCallback()
+{
+    LOG_INFO("Thread 9 entered.");
+    auto &dev{Device::instance()};
+
+    while (1)
+    {
+        dev.m_thread8.join();
+        LOG_INFO("Thread 8 joined to thread 9.");
+
+        if (auto error{dev.m_thread8.restart()}; error != ThreadX::Error::success)
+        {
+            LOG_ERROR("Thread 9 ThreadX error %u!", error);
+            break;
+        }
+    }
+}
+
+ThreadFileSystem::ThreadFileSystem(
+    std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, void *driverInfoPtr)
+    : Thread(name, pool, stackSize), Media(driverInfoPtr)
 {
 }
 
@@ -368,6 +427,8 @@ void ThreadFileSystem::entryCallback()
             {
                 LOG_INFO("Success reading file.");
             }
+
+            LOG_INFO("Thread file system max stack used: %u%%", stackInfo().maxUsedPercent);
         };
     } while (0);
 

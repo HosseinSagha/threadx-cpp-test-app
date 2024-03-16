@@ -58,16 +58,12 @@
 /* Defined, this option bypasses the NOR flash driver read routine in favor or reading
    the NOR memory directly, resulting in a significant performance increase.
 */
-/*
 #define LX_DIRECT_READ
-*/
 
 /* Defined, this causes the LevelX NOR instance open logic to verify free NOR
    sectors are all ones.
 */
-/*
 #define LX_FREE_SECTOR_DATA_VERIFY
-*/
 
 /* By default this value is 4, which represents a maximum of 4 blocks that
    can be allocated for metadata.

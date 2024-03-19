@@ -64,7 +64,8 @@
         "semaphore": "cpp",
         "thread": "cpp",
         "filesystem": "cpp",
-        "codecvt": "cpp"
+        "codecvt": "cpp",
+        "source_location": "cpp"
     },
     "editor.formatOnSave": true,
     "clang-format.executable": "clang-format",

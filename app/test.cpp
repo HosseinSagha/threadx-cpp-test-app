@@ -48,11 +48,12 @@ extern "C" void _fx_ram_driver(FX_MEDIA *media_ptr);
 
 static void statckErrorCallback(ThreadX::Thread &thread)
 {
-    LOG_ERROR("Stack Overflow in %s", thread.name().data());
+    LOG_ERR("Stack Overflow in %s", thread.name().data());
 }
 
 void runTestCode()
 {
+    Logger::init(LogType::debug);
     ThreadX::Thread::registerStackErrorNotifyCallback(statckErrorCallback);
     Device::instance();
 }
@@ -101,7 +102,7 @@ void Thread0::entryCallback()
         /* Set event flag 0 to wakeup thread 5. */
         if (ThreadX::Error error{dev.m_eventFlags.set(0x1)}; error != ThreadX::Error::success)
         {
-            LOG_ERROR("Main thread ThreadX error %u!", error);
+            LOG_ERR("Main thread ThreadX error %u!", error);
             break;
         }
 
@@ -109,18 +110,18 @@ void Thread0::entryCallback()
     }
 }
 
-Thread1::Thread1(
-    std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const NotifyCallback &entryExitNotifyCallback,
-    ThreadX::Uint priority, ThreadX::Uint preamptionThresh, ThreadX::Ulong timeSlice)
+Thread1::Thread1(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
+                 const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority, ThreadX::Uint preamptionThresh,
+                 ThreadX::Ulong timeSlice)
     : Thread(name, pool, stackSize, entryExitNotifyCallback, priority, preamptionThresh, timeSlice),
       m_timer1(500ms, std::bind_front(&Thread1::timerCallback, this)),
       m_timer2(1s, std::bind_front(&Thread1::timerCallback, this))
 {
 }
 
-Thread2::Thread2(
-    std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const NotifyCallback &entryExitNotifyCallback,
-    ThreadX::Uint priority, ThreadX::Uint preamptionThresh, ThreadX::Ulong timeSlice)
+Thread2::Thread2(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
+                 const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority, ThreadX::Uint preamptionThresh,
+                 ThreadX::Ulong timeSlice)
     : Thread(name, pool, stackSize, entryExitNotifyCallback, priority, preamptionThresh, timeSlice),
       m_timer(2s, std::bind_front(&Thread2::timerCallback, this))
 {
@@ -138,11 +139,11 @@ void Thread1::entryCallback()
         /* Send message to queue 0.  */
         if (ThreadX::Error error{dev.m_queue.send(m_messages_sent)}; error != ThreadX::Error::success)
         {
-            LOG_ERROR("Thread 1 ThreadX error %u!", error);
+            LOG_ERR("Thread 1 ThreadX error %u!", error);
             break;
         }
 
-        LOG_DEBUG("Queue message sent: %u", m_messages_sent);
+        LOG_DBG("Queue message sent: %u", m_messages_sent);
         /* Increment the message sent.  */
         m_messages_sent++;
         LOG_INFO("No. of message sent: %u", m_messages_sent);
@@ -177,19 +178,19 @@ void Thread2::entryCallback()
         auto [error, received_message] = Device::instance().m_queue.receive();
         if (error != ThreadX::Error::success)
         {
-            LOG_ERROR("Thread 2 ThreadX error %u!", error);
+            LOG_ERR("Thread 2 ThreadX error %u!", error);
             break;
         }
         /* Check completion status and make sure the message is what we expected.  */
         if (received_message != m_messages_received)
         {
-            LOG_ERROR("Thread 2 error %u!", Error::unexpectedValue);
+            LOG_ERR("Thread 2 error %u!", Error::unexpectedValue);
             break;
         }
 
         /* Otherwise, all is okay.  Increment the received message count.  */
         m_messages_received++;
-        LOG_DEBUG("Queue message received: %u", received_message);
+        LOG_DBG("Queue message received: %u", received_message);
         LOG_INFO("No. of message received: %u", m_messages_received);
         LOG_INFO("Timer3 callback counter: %u", timer_counter);
     }
@@ -224,7 +225,7 @@ void Thread3_4::entryCallback()
         /* Get the semaphore with suspension.  */
         if (error = dev.m_semaphore.acquire(); error != ThreadX::Error::success)
         {
-            LOG_ERROR("Thread 3 or 4 ThreadX error %u!", error);
+            LOG_ERR("Thread 3 or 4 ThreadX error %u!", error);
             break;
         }
 
@@ -240,7 +241,7 @@ void Thread3_4::entryCallback()
         LOG_INFO("Semaphore released.");
     }
 
-    LOG_ERROR("Thread 3 or 4 ThreadX error %u!", error);
+    LOG_ERR("Thread 3 or 4 ThreadX error %u!", error);
 }
 
 void Thread5::entryCallback()
@@ -255,14 +256,14 @@ void Thread5::entryCallback()
         auto [error, actual_flags] = Device::instance().m_eventFlags.waitAll(0x1);
         if (error != ThreadX::Error::success)
         {
-            LOG_ERROR("Thread 5 ThreadX error %u!", error);
+            LOG_ERR("Thread 5 ThreadX error %u!", error);
             break;
         }
 
         /* Check status.  */
         if (actual_flags != 0x1)
         {
-            LOG_ERROR("Thread 5 error %u!", Error::unexpectedValue);
+            LOG_ERR("Thread 5 error %u!", Error::unexpectedValue);
             break;
         }
 
@@ -316,7 +317,7 @@ void Thread6_7::entryCallback()
         LOG_INFO("mutex unlocked.");
     }
 
-    LOG_ERROR("Thread 6 or 7 ThreadX error %u!", error);
+    LOG_ERR("Thread 6 or 7 ThreadX error %u!", error);
 }
 
 void Thread8::enteryExitNotifyCallback(
@@ -337,7 +338,7 @@ void Thread8::entryCallback()
     LOG_INFO("Thread 8 entered.");
     if (auto error{ThreadX::ThisThread::sleepFor(3s)}; error != ThreadX::Error::success)
     {
-        LOG_ERROR("Thread 8 ThreadX error %u!", error);
+        LOG_ERR("Thread 8 ThreadX error %u!", error);
     }
 }
 
@@ -353,14 +354,14 @@ void Thread9::entryCallback()
 
         if (auto error{dev.m_thread8.restart()}; error != ThreadX::Error::success)
         {
-            LOG_ERROR("Thread 9 ThreadX error %u!", error);
+            LOG_ERR("Thread 9 ThreadX error %u!", error);
             break;
         }
     }
 }
 
 ThreadFileSystem::ThreadFileSystem(
-    std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, void *driverInfoPtr)
+    const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, void *driverInfoPtr)
     : Thread(name, pool, stackSize), Media(driverInfoPtr)
 {
 }
@@ -420,7 +421,7 @@ void ThreadFileSystem::entryCallback()
 
             if (actual != 28)
             {
-                LOG_ERROR("Error reading file.");
+                LOG_ERR("Error reading file.");
                 return;
             }
             else
@@ -432,7 +433,7 @@ void ThreadFileSystem::entryCallback()
         };
     } while (0);
 
-    LOG_ERROR("Thread file system FileX error %u!", error);
+    LOG_ERR("Thread file system FileX error %u!", error);
 }
 
 void ThreadFileSystem::driverCallbackImpl(FileX::Media<> &media)

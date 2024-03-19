@@ -46,7 +46,7 @@ class Thread0 : public ThreadX::Thread
 class Thread1 : public ThreadX::Thread
 {
   public:
-    Thread1(std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
+    Thread1(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
             const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority, ThreadX::Uint preamptionThresh,
             ThreadX::Ulong timeSlice);
 
@@ -65,7 +65,7 @@ class Thread1 : public ThreadX::Thread
 class Thread2 : public ThreadX::Thread
 {
   public:
-    Thread2(std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
+    Thread2(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
             const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority, ThreadX::Uint preamptionThresh,
             ThreadX::Ulong timeSlice);
     void queueCallback(MsgQueue &queue);
@@ -135,7 +135,7 @@ class Thread9 : public ThreadX::Thread
 class ThreadFileSystem : public ThreadX::Thread, public FileX::Media<>
 {
   public:
-    ThreadFileSystem(std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, void *driverInfoPtr);
+    ThreadFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, void *driverInfoPtr);
 
   private:
     void driverCallbackImpl(FileX::Media<> &) final;

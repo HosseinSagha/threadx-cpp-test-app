@@ -59,20 +59,20 @@ void runTestCode()
 }
 
 Device::Device()
-    : m_memoryPool(), m_thread0("Thread0", m_memoryPool, thread0StackSize, {}, 1, 1),
-      m_thread1("Thread1", m_memoryPool, thread1StackSize, {}, 16, 16, 4),
-      m_thread2("Thread2", m_memoryPool, thread2StackSize, {}, 16, 16, 4),
-      m_thread3("Thread3", m_memoryPool, thread3StackSize, {}, 8, 8),
-      m_thread4("Thread4", m_memoryPool, thread4StackSize, {}, 8, 8),
-      m_thread5("Thread5", m_memoryPool, thread5StackSize, {}, 4, 4),
-      m_thread6("Thread6", m_memoryPool, thread6StackSize, {}, 8, 8),
-      m_thread7("Thread7", m_memoryPool, thread7StackSize, {}, 8, 8),
+    : m_memoryPool(), m_thread0("thread 0", m_memoryPool, thread0StackSize, {}, 1, 1),
+      m_thread1("thread 1", m_memoryPool, thread1StackSize, {}, 16, 16, 4),
+      m_thread2("thread 2", m_memoryPool, thread2StackSize, {}, 16, 16, 4),
+      m_thread3("thread 3", m_memoryPool, thread3StackSize, {}, 8, 8),
+      m_thread4("thread 4", m_memoryPool, thread4StackSize, {}, 8, 8),
+      m_thread5("thread 5", m_memoryPool, thread5StackSize, {}, 4, 4),
+      m_thread6("thread 6", m_memoryPool, thread6StackSize, {}, 8, 8),
+      m_thread7("thread 7", m_memoryPool, thread7StackSize, {}, 8, 8),
       m_thread8(
-          "Thread8", m_memoryPool, thread8StackSize, std::bind_front(&Thread8::enteryExitNotifyCallback, &m_thread8)),
-      m_thread9("Thread9", m_memoryPool, thread9StackSize),
-      m_threadFileSystem("ThreadFS", m_memoryPool, threadFileSystemStackSize, ramMem), m_mutex(),
-      m_semaphore("Semaphore1", 1), m_eventFlags("Event flags1"),
-      m_queue("Queue1", m_memoryPool, queueSize, std::bind_front(&Thread2::queueCallback, &m_thread2))
+          "thread 8", m_memoryPool, thread8StackSize, std::bind_front(&Thread8::enteryExitNotifyCallback, &m_thread8)),
+      m_thread9("thread 9", m_memoryPool, thread9StackSize),
+      m_threadFileSystem("thread FS", m_memoryPool, threadFileSystemStackSize, ramMem), m_mutex(),
+      m_semaphore("semaphore 1", 1), m_eventFlags("event flags 1"),
+      m_queue("queue 1", m_memoryPool, queueSize, std::bind_front(&Thread2::queueCallback, &m_thread2))
 {
 }
 
@@ -86,9 +86,10 @@ void Thread0::entryCallback()
 {
     using namespace std::chrono_literals;
 
-    Logger::clear();
-    LOG_INFO("Thread 0 entered");
+    LOG_CLR();
+    LOG_INFO("%s entered", name().data());
     auto &dev{Device::instance()};
+    auto eventName{dev.m_eventFlags.name().data()};
     /* This thread simply sits in while-forever-sleep loop.  */
     while (1)
     {
@@ -102,11 +103,11 @@ void Thread0::entryCallback()
         /* Set event flag 0 to wakeup thread 5. */
         if (ThreadX::Error error{dev.m_eventFlags.set(0x1)}; error != ThreadX::Error::success)
         {
-            LOG_ERR("Main thread ThreadX error %u!", error);
+            LOG_ERR("%s ThreadX error %u!", eventName, error);
             break;
         }
 
-        LOG_INFO("Event flag 0 set.");
+        LOG_INFO("%s flag 0 set.", eventName);
     }
 }
 
@@ -129,7 +130,7 @@ Thread2::Thread2(const std::string_view name, ThreadPool &pool, ThreadX::Ulong s
 
 void Thread1::entryCallback()
 {
-    LOG_INFO("Thread 1 entered.");
+    LOG_INFO("%s entered", name().data());
     auto &dev{Device::instance()};
     /* This thread simply sends messages to a queue shared by thread 2.  */
     while (1)
@@ -139,7 +140,7 @@ void Thread1::entryCallback()
         /* Send message to queue 0.  */
         if (ThreadX::Error error{dev.m_queue.send(m_messages_sent)}; error != ThreadX::Error::success)
         {
-            LOG_ERR("Thread 1 ThreadX error %u!", error);
+            LOG_ERR("%s ThreadX error %u!", dev.m_queue.name().data(), error);
             break;
         }
 
@@ -168,29 +169,33 @@ void Thread1::timerCallback(const uint32_t id)
 
 void Thread2::entryCallback()
 {
-    LOG_INFO("Thread 2 entered.");
+    const auto threadName{name().data()};
+    LOG_INFO("%s entered", threadName);
+    auto &dev{Device::instance()};
+    auto queueName{dev.m_queue.name().data()};
+
     /* This thread retrieves messages placed on the queue by thread 1.  */
     while (1)
     {
         /* Increment the thread counter.  */
         m_counter++;
         /* Retrieve a message from the queue.  */
-        auto [error, received_message] = Device::instance().m_queue.receive();
+        auto [error, received_message] = dev.m_queue.receive();
         if (error != ThreadX::Error::success)
         {
-            LOG_ERR("Thread 2 ThreadX error %u!", error);
+            LOG_ERR("%s ThreadX error %u!", queueName, error);
             break;
         }
         /* Check completion status and make sure the message is what we expected.  */
         if (received_message != m_messages_received)
         {
-            LOG_ERR("Thread 2 error %u!", Error::unexpectedValue);
+            LOG_ERR("%s recieved message %u!", threadName, Error::unexpectedValue);
             break;
         }
 
         /* Otherwise, all is okay.  Increment the received message count.  */
         m_messages_received++;
-        LOG_DBG("Queue message received: %u", received_message);
+        LOG_DBG("%s message received: %u", queueName, received_message);
         LOG_INFO("No. of message received: %u", m_messages_received);
         LOG_INFO("Timer3 callback counter: %u", timer_counter);
     }
@@ -208,13 +213,15 @@ void Thread2::timerCallback(const uint32_t callbackID)
 
 void Thread2::queueCallback([[maybe_unused]] MsgQueue &queue)
 {
-    LOG_INFO("queue message callback called.");
+    LOG_INFO("%s message callback called.", queue.name().data());
 }
 
 void Thread3_4::entryCallback()
 {
-    LOG_INFO("Thread 3 or 4 entered.");
+    const auto threadName{name().data()};
+    LOG_INFO("%s entered", threadName);
     auto &dev{Device::instance()};
+    auto semaphoreName{dev.m_semaphore.name().data()};
     ThreadX::Error error{};
     /* This function is executed from thread 3 and thread 4.  As the loop
        below shows, these function compete for ownership of semaphore_0.  */
@@ -225,28 +232,28 @@ void Thread3_4::entryCallback()
         /* Get the semaphore with suspension.  */
         if (error = dev.m_semaphore.acquire(); error != ThreadX::Error::success)
         {
-            LOG_ERR("Thread 3 or 4 ThreadX error %u!", error);
+            LOG_ERR("%s ThreadX error %u!", semaphoreName, error);
             break;
         }
 
-        LOG_INFO("Semaphore acquired.");
+        LOG_INFO("%s acquired.", semaphoreName);
         /* Sleep for 2 ticks to hold the semaphore.  */
         ThreadX::ThisThread::sleepFor(20ms);
         /* Release the semaphore.  */
         if (error = dev.m_semaphore.release(); error != ThreadX::Error::success)
         {
+            LOG_ERR("%s ThreadX error %u!", semaphoreName, error);
             break;
         }
 
-        LOG_INFO("Semaphore released.");
+        LOG_INFO("%s released.", semaphoreName);
     }
-
-    LOG_ERR("Thread 3 or 4 ThreadX error %u!", error);
 }
 
 void Thread5::entryCallback()
 {
-    LOG_INFO("Thread 5 entered.");
+    const auto threadName{name().data()};
+    LOG_INFO("%s entered", threadName);
     /* This thread simply waits for an event in a forever loop.  */
     while (1)
     {
@@ -256,24 +263,25 @@ void Thread5::entryCallback()
         auto [error, actual_flags] = Device::instance().m_eventFlags.waitAll(0x1);
         if (error != ThreadX::Error::success)
         {
-            LOG_ERR("Thread 5 ThreadX error %u!", error);
+            LOG_ERR("%s ThreadX error %u!", threadName, error);
             break;
         }
 
         /* Check status.  */
         if (actual_flags != 0x1)
         {
-            LOG_ERR("Thread 5 error %u!", Error::unexpectedValue);
+            LOG_ERR("%s error %u!", threadName, Error::unexpectedValue);
             break;
         }
 
-        LOG_INFO("Event flag 0 got.");
+        LOG_INFO("%s flag 0 got.", Device::instance().m_eventFlags.name().data());
     }
 }
 
 void Thread6_7::entryCallback()
 {
-    LOG_INFO("Thread 6 or 7 entered");
+    const auto threadName{name().data()};
+    LOG_INFO("%s entered", threadName);
     auto &dev{Device::instance()};
     ThreadX::Error error{};
     /* This function is executed from thread 6 and thread 7.  As the loop
@@ -317,44 +325,48 @@ void Thread6_7::entryCallback()
         LOG_INFO("mutex unlocked.");
     }
 
-    LOG_ERR("Thread 6 or 7 ThreadX error %u!", error);
+    LOG_ERR("%s ThreadX error %u!", threadName, error);
 }
 
 void Thread8::enteryExitNotifyCallback(
     [[maybe_unused]] ThreadX::Thread &thread, const ThreadX::NotifyCondition condition)
 {
+    const auto threadName{name().data()};
+
     if (condition == ThreadX::NotifyCondition::entry)
     {
-        LOG_INFO("Thread 8 entry callback called.");
+        LOG_INFO("%s entry callback called.", threadName);
     }
     else
     {
-        LOG_INFO("Thread 8 exit callback called.");
+        LOG_INFO("%s exit callback called.", threadName);
     }
 }
 
 void Thread8::entryCallback()
 {
-    LOG_INFO("Thread 8 entered.");
+    const auto threadName{name().data()};
+    LOG_INFO("%s entered", threadName);
     if (auto error{ThreadX::ThisThread::sleepFor(3s)}; error != ThreadX::Error::success)
     {
-        LOG_ERR("Thread 8 ThreadX error %u!", error);
+        LOG_ERR("%s ThreadX error %u!", threadName, error);
     }
 }
 
 void Thread9::entryCallback()
 {
-    LOG_INFO("Thread 9 entered.");
+    const auto threadName{name().data()};
+    LOG_INFO("%s entered", threadName);
     auto &dev{Device::instance()};
 
     while (1)
     {
         dev.m_thread8.join();
-        LOG_INFO("Thread 8 joined to thread 9.");
+        LOG_INFO("%s joined to %s.", dev.m_thread8.name().data(), threadName);
 
         if (auto error{dev.m_thread8.restart()}; error != ThreadX::Error::success)
         {
-            LOG_ERR("Thread 9 ThreadX error %u!", error);
+            LOG_ERR("%s ThreadX error %u!", threadName, error);
             break;
         }
     }
@@ -368,7 +380,8 @@ ThreadFileSystem::ThreadFileSystem(
 
 void ThreadFileSystem::entryCallback()
 {
-    LOG_INFO("Thread file system entered");
+    const auto threadName{name().data()};
+    LOG_INFO("%s entered", threadName);
     FileX::Error error{open()};
 
     do
@@ -429,11 +442,11 @@ void ThreadFileSystem::entryCallback()
                 LOG_INFO("Success reading file.");
             }
 
-            LOG_INFO("Thread file system max stack used: %u%%", stackInfo().maxUsedPercent);
+            LOG_INFO("%s max stack used: %u%%", threadName, stackInfo().maxUsedPercent);
         };
     } while (0);
 
-    LOG_ERR("Thread file system FileX error %u!", error);
+    LOG_ERR("%s error %u!", threadName, error);
 }
 
 void ThreadFileSystem::driverCallbackImpl(FileX::Media<> &media)

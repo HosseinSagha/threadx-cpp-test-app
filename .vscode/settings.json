@@ -65,7 +65,8 @@
         "thread": "cpp",
         "filesystem": "cpp",
         "codecvt": "cpp",
-        "source_location": "cpp"
+        "source_location": "cpp",
+        "stacktrace": "cpp"
     },
     "editor.formatOnSave": true,
     "clang-format.executable": "clang-format",

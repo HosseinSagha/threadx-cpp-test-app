@@ -53,7 +53,7 @@ static void statckErrorCallback(ThreadX::Thread &thread)
 
 void runTestCode()
 {
-    Logger::init(LogType::debug);
+    Logger::init(Logger::Type::debug);
     ThreadX::Thread::registerStackErrorNotifyCallback(statckErrorCallback);
     Device::instance();
 }
@@ -329,11 +329,11 @@ void Thread6_7::entryCallback()
 }
 
 void Thread8::enteryExitNotifyCallback(
-    [[maybe_unused]] ThreadX::Thread &thread, const ThreadX::NotifyCondition condition)
+    [[maybe_unused]] ThreadX::Thread &thread, const ThreadX::Thread::NotifyCondition condition)
 {
     const auto threadName{name().data()};
 
-    if (condition == ThreadX::NotifyCondition::entry)
+    if (condition == ThreadX::Thread::NotifyCondition::entry)
     {
         LOG_INFO("%s entry callback called.", threadName);
     }

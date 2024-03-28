@@ -4,7 +4,6 @@
 int main()
 {
     //clock initialisaion must be done here
-
     ThreadX::Kernel::start();
 }
 

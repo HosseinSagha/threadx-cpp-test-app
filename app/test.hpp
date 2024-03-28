@@ -117,7 +117,7 @@ class Thread8 : public ThreadX::Thread
 {
   public:
     using Thread::Thread;
-    void enteryExitNotifyCallback(ThreadX::Thread &thread, const ThreadX::NotifyCondition condition);
+    void enteryExitNotifyCallback(ThreadX::Thread &thread, const ThreadX::Thread::NotifyCondition condition);
 
   private:
     void entryCallback() final;

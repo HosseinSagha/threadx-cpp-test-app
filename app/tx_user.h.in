@@ -1,13 +1,12 @@
-/**************************************************************************/
-/*                                                                        */
-/*       Copyright (c) Microsoft Corporation. All rights reserved.        */
-/*                                                                        */
-/*       This software is licensed under the Microsoft Software License   */
-/*       Terms for Microsoft Azure RTOS. Full text of the license can be  */
-/*       found in the LICENSE file at https://aka.ms/AzureRTOS_EULA       */
-/*       and in the root directory of this software.                      */
-/*                                                                        */
-/**************************************************************************/
+/***************************************************************************
+ * Copyright (c) 2024 Microsoft Corporation 
+ * 
+ * This program and the accompanying materials are made available under the
+ * terms of the MIT License which is available at
+ * https://opensource.org/licenses/MIT.
+ * 
+ * SPDX-License-Identifier: MIT
+ **************************************************************************/
 
 /**************************************************************************/
 /**************************************************************************/
@@ -24,7 +23,7 @@
 /*  PORT SPECIFIC C INFORMATION                            RELEASE        */
 /*                                                                        */
 /*    tx_user.h                                           PORTABLE C      */
-/*                                                           6.x          */
+/*                                                           6.3.0        */
 /*                                                                        */
 /*  AUTHOR                                                                */
 /*                                                                        */
@@ -60,10 +59,10 @@
 /*                                            optimized the definition of */
 /*                                            TX_TIMER_TICKS_PER_SECOND,  */
 /*                                            resulting in version 6.1.11 */
-/*  xx-xx-xxxx      Xiuwen Cai              Modified comment(s),          */
+/*  10-31-2023      Xiuwen Cai              Modified comment(s),          */
 /*                                            added option for random     */
 /*                                            number stack filling,       */
-/*                                            resulting in version 6.x    */
+/*                                            resulting in version 6.3.0  */
 /*                                                                        */
 /**************************************************************************/
 
@@ -107,20 +106,23 @@
    to tx_port.h for descriptions on each of these options.  */
 
 /*
+#define TX_MAX_PRIORITIES                       32
+#define TX_MINIMUM_STACK                        ????
+#define TX_THREAD_USER_EXTENSION                ????
 #define TX_TIMER_THREAD_STACK_SIZE              ????
 #define TX_TIMER_THREAD_PRIORITY                ????
 */
 
-#define TX_MAX_PRIORITIES 32
 #define TX_MINIMUM_STACK 1024
-#define TX_THREAD_USER_EXTENSION
 
 /* Define the common timer tick reference for use by other middleware components. The default
    value is 10ms (i.e. 100 ticks, defined in tx_api.h), but may be replaced by a port-specific
    version in tx_port.h or here.
    Note: the actual hardware timer value may need to be changed (usually in tx_initialize_low_level).  */
 
-#define TX_TIMER_TICKS_PER_SECOND 100UL
+/*
+#define TX_TIMER_TICKS_PER_SECOND       (100UL)
+*/
 
 /* Determine if there is a FileX pointer in the thread control block.
    By default, the pointer is there for legacy/backwards compatibility.
@@ -137,14 +139,12 @@
    By default, the timer thread is used. When the following is defined, the timer expiration
    processing is done directly from the timer ISR, thereby eliminating the timer thread control
    block, stack, and context switching to activate it.  */
-
 #define TX_TIMER_PROCESS_IN_ISR
 
 /* Determine if in-line timer reactivation should be used within the timer expiration processing.
    By default, this is disabled and a function call is used. When the following is defined,
    reactivating is performed in-line resulting in faster timer processing but slightly larger
    code size.  */
-
 #define TX_REACTIVATE_INLINE
 
 /* Determine is stack filling is enabled. By default, ThreadX stack filling is enabled,
@@ -160,7 +160,6 @@
    checking is enabled (TX_ENABLE_STACK_CHECKING is defined), the TX_DISABLE_STACK_FILLING
    define is negated, thereby forcing the stack fill which is necessary for the stack checking
    logic.  */
-
 #define TX_ENABLE_STACK_CHECKING
 
 /* Determine if random number is used for stack filling. By default, ThreadX uses a fixed
@@ -182,7 +181,6 @@
 /* Determine if global ThreadX variables should be cleared. If the compiler startup code clears
    the .bss section prior to ThreadX running, the define can be used to eliminate unnecessary
    clearing of ThreadX global variables.  */
-
 #define TX_DISABLE_REDUNDANT_CLEARING
 
 /* Determine if no timer processing is required. This option will help eliminate the timer
@@ -209,7 +207,6 @@
 /* Determine if the tx_thread_resume and tx_thread_suspend services should have their internal
    code in-line. This results in a larger image, but improves the performance of the thread
    resume and suspend services.  */
-
 #define TX_INLINE_THREAD_RESUME_SUSPEND
 
 /* Determine if the internal ThreadX code is non-interruptable. This results in smaller code
@@ -222,7 +219,6 @@
 /* Determine if the trace event logging code should be enabled. This causes slight increases in
    code size and overhead, but provides the ability to generate system trace information which
    is available for viewing in TraceX.  */
-
 #define TX_ENABLE_EVENT_TRACE
 
 /* Determine if block pool performance gathering is required by the application. When the following is

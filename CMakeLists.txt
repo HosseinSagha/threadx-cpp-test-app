@@ -10,6 +10,8 @@ set(MCU_FAMILY STM32L4xx) #MCU HAL driver folder
 set(MCU_LINE STM32L496xx) #MCU line define macro
 set(MCU_TYPE STM32L496ZGTX) #Linker/startup filenames
 
+set(THREADX_VER v6.4.1_rel)
+
 find_package(Git REQUIRED)
 Include(FetchContent)
 

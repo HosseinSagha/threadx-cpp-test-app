@@ -132,14 +132,16 @@ class Thread9 : public ThreadX::Thread
     void entryCallback() final;
 };
 
-class ThreadFileSystem : public ThreadX::Thread, public FileX::Media<>
+class ThreadFileSystem : public ThreadX::Thread
 {
   public:
     ThreadFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, void *driverInfoPtr);
 
   private:
-    void driverCallbackImpl(FileX::Media<> &) final;
     void entryCallback() final;
+    static void driverCallback(FileX::Media<> &media);
+
+    FileX::Media<> m_media;
 };
 
 void runTestCode();

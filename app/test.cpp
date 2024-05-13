@@ -374,7 +374,7 @@ void Thread9::entryCallback()
 
 ThreadFileSystem::ThreadFileSystem(
     const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, void *driverInfoPtr)
-    : Thread(name, pool, stackSize), Media(driverInfoPtr)
+    : Thread(name, pool, stackSize), m_media(driverCallback, driverInfoPtr)
 {
 }
 
@@ -382,31 +382,31 @@ void ThreadFileSystem::entryCallback()
 {
     const auto threadName{name().data()};
     LOG_INFO("%s entered", threadName);
-    FileX::Error error{open()};
+    FileX::Error error{m_media.open()};
 
     do
     {
         if (error == FileX::Error::bootError)
         {
-            if (error = format(20 * 512); error != FileX::Error::success)
+            if (error = m_media.format(20 * 512); error != FileX::Error::success)
             {
                 break;
             }
 
-            if (error = open(); error != FileX::Error::success)
+            if (error = m_media.open(); error != FileX::Error::success)
             {
                 break;
             }
         }
 
-        if (error = createFile("my file.txt"); error != FileX::Error::success)
+        if (error = m_media.createFile("my file.txt"); error != FileX::Error::success)
         {
             break;
         }
 
         while (true)
         {
-            FileX::File file("my file.txt", *this, FileX::OpenOption::write);
+            FileX::File file("my file.txt", m_media, FileX::OpenOption::write);
 
             if (error = file.seek(0); error != FileX::Error::success)
             {
@@ -449,7 +449,7 @@ void ThreadFileSystem::entryCallback()
     LOG_ERR("%s error %u!", threadName, error);
 }
 
-void ThreadFileSystem::driverCallbackImpl(FileX::Media<> &media)
+void ThreadFileSystem::driverCallback(FileX::Media<> &media)
 {
-    _fx_ram_driver(std::addressof(media));
+    _fx_ram_driver(media.getAddress());
 }

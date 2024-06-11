@@ -1,3 +1,5 @@
+#pragma once
+
 #include "kernel.hpp"
 #include "logger.hpp"
 #include "mutex.hpp"

@@ -1,7 +1,7 @@
 #include "test.hpp"
 #include "eventFlags.hpp"
 #include "file.hpp"
-#include "logger.hpp"
+#include "jLogger.hpp"
 #include "mutex.hpp"
 #include "semaphore.hpp"
 #include "trace.hpp"
@@ -53,7 +53,7 @@ static void statckErrorCallback(ThreadX::ThreadBase &thread)
 
 void runTestCode()
 {
-    Logger::init(Logger::Type::debug);
+    JLogger::init(JLogger::Type::debug);
     Thread::registerStackErrorNotifyCallback(statckErrorCallback);
     Device::instance();
 }

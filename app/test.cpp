@@ -58,19 +58,30 @@ void runTestCode()
     Device::instance();
 }
 
+struct PrintName
+{
+    void operator()(ThreadX::ThreadBase &thread, ThreadX::ThreadBase::NotifyCondition cond) const
+    {
+        if (cond == ThreadX::ThreadBase::NotifyCondition::entry)
+        {
+            LOG_INFO("%s entered", thread.name().data());
+        }
+    }
+};
+
 Device::Device()
-    : m_memoryPool("byte pool"), m_thread0("thread 0", m_memoryPool, thread0StackSize, {}, 1, 1),
-      m_thread1("thread 1", m_memoryPool, thread1StackSize, {}, 16, 16, 4),
-      m_thread2("thread 2", m_memoryPool, thread2StackSize, {}, 16, 16, 4),
-      m_thread3("thread 3", m_memoryPool, thread3StackSize, {}, 8, 8),
-      m_thread4("thread 4", m_memoryPool, thread4StackSize, {}, 8, 8),
-      m_thread5("thread 5", m_memoryPool, thread5StackSize, {}, 4, 4),
-      m_thread6("thread 6", m_memoryPool, thread6StackSize, {}, 8, 8),
-      m_thread7("thread 7", m_memoryPool, thread7StackSize, {}, 8, 8),
+    : m_memoryPool("byte pool"), m_thread0("thread 0", m_memoryPool, thread0StackSize, PrintName(), 1, 1),
+      m_thread1("thread 1", m_memoryPool, thread1StackSize, PrintName(), 16, 16, 4),
+      m_thread2("thread 2", m_memoryPool, thread2StackSize, PrintName(), 16, 16, 4),
+      m_thread3("thread 3", m_memoryPool, thread3StackSize, PrintName(), 8, 8),
+      m_thread4("thread 4", m_memoryPool, thread4StackSize, PrintName(), 8, 8),
+      m_thread5("thread 5", m_memoryPool, thread5StackSize, PrintName(), 4, 4),
+      m_thread6("thread 6", m_memoryPool, thread6StackSize, PrintName(), 8, 8),
+      m_thread7("thread 7", m_memoryPool, thread7StackSize, PrintName(), 8, 8),
       m_thread8(
           "thread 8", m_memoryPool, thread8StackSize, std::bind_front(&Thread8::enteryExitNotifyCallback, &m_thread8)),
       m_thread9("thread 9", m_memoryPool, thread9StackSize),
-      m_threadFileSystem("thread FS", m_memoryPool, threadFileSystemStackSize, ramMem), m_mutex(),
+      m_threadFileSystem("thread FS", m_memoryPool, threadFileSystemStackSize, PrintName(), ramMem), m_mutex(),
       m_semaphore("semaphore 1", 1), m_eventFlags("event flags 1"),
       m_queue("queue 1", m_memoryPool, queueSize, std::bind_front(&Thread2::queueCallback, &m_thread2))
 {
@@ -86,14 +97,11 @@ void Thread0::entryCallback()
 {
     using namespace std::chrono_literals;
 
-    LOG_CLR();
-    LOG_INFO("%s entered", name().data());
     auto &dev{Device::instance()};
     auto eventName{dev.m_eventFlags.name().data()};
     /* This thread simply sits in while-forever-sleep loop.  */
     while (1)
     {
-
         /* Increment the thread counter.  */
         m_counter++;
 
@@ -122,7 +130,6 @@ Thread1::Thread1(const std::string_view name, ThreadPool &pool, ThreadX::Ulong s
 
 void Thread1::entryCallback()
 {
-    LOG_INFO("%s entered", name().data());
     auto &dev{Device::instance()};
     /* This thread simply sends messages to a queue shared by thread 2.  */
     while (1)
@@ -169,8 +176,6 @@ Thread2::Thread2(const std::string_view name, ThreadPool &pool, ThreadX::Ulong s
 
 void Thread2::entryCallback()
 {
-    const auto threadName{name().data()};
-    LOG_INFO("%s entered", threadName);
     auto &dev{Device::instance()};
     auto queueName{dev.m_queue.name().data()};
 
@@ -189,7 +194,7 @@ void Thread2::entryCallback()
         /* Check completion status and make sure the message is what we expected.  */
         if (received_message != m_messages_received)
         {
-            LOG_ERR("%s recieved message %u!", threadName, Error::unexpectedValue);
+            LOG_ERR("%s recieved message %u!", name().data(), Error::unexpectedValue);
             break;
         }
 
@@ -218,8 +223,6 @@ void Thread2::queueCallback(ThreadX::QueueBase<uint32_t> &queue)
 
 void Thread3_4::entryCallback()
 {
-    const auto threadName{name().data()};
-    LOG_INFO("%s entered", threadName);
     auto &dev{Device::instance()};
     auto semaphoreName{dev.m_semaphore.name().data()};
     ThreadX::Error error{};
@@ -253,7 +256,6 @@ void Thread3_4::entryCallback()
 void Thread5::entryCallback()
 {
     const auto threadName{name().data()};
-    LOG_INFO("%s entered", threadName);
     /* This thread simply waits for an event in a forever loop.  */
     while (1)
     {
@@ -280,8 +282,6 @@ void Thread5::entryCallback()
 
 void Thread6_7::entryCallback()
 {
-    const auto threadName{name().data()};
-    LOG_INFO("%s entered", threadName);
     auto &dev{Device::instance()};
     ThreadX::Error error{};
     /* This function is executed from thread 6 and thread 7.  As the loop
@@ -325,62 +325,54 @@ void Thread6_7::entryCallback()
         LOG_INFO("mutex unlocked.");
     }
 
-    LOG_ERR("%s ThreadX error %u!", threadName, error);
+    LOG_ERR("%s ThreadX error %u!", name().data(), error);
 }
 
 void Thread8::enteryExitNotifyCallback([[maybe_unused]] ThreadBase &thread, const Thread::NotifyCondition condition)
 {
-    const auto threadName{name().data()};
-
     if (condition == Thread::NotifyCondition::entry)
     {
-        LOG_INFO("%s entry callback called.", threadName);
+        LOG_INFO("%s entry callback called.", name().data());
     }
     else
     {
-        LOG_INFO("%s exit callback called.", threadName);
+        LOG_INFO("%s exit callback called.", name().data());
     }
 }
 
 void Thread8::entryCallback()
 {
-    const auto threadName{name().data()};
-    LOG_INFO("%s entered", threadName);
     if (auto error{ThreadX::ThisThread::sleepFor(3s)}; error != ThreadX::Error::success)
     {
-        LOG_ERR("%s ThreadX error %u!", threadName, error);
+        LOG_ERR("%s ThreadX error %u!", name().data(), error);
     }
 }
 
 void Thread9::entryCallback()
 {
-    const auto threadName{name().data()};
-    LOG_INFO("%s entered", threadName);
     auto &dev{Device::instance()};
 
     while (1)
     {
         dev.m_thread8.join();
-        LOG_INFO("%s joined to %s.", dev.m_thread8.name().data(), threadName);
+        LOG_INFO("%s joined to %s.", dev.m_thread8.name().data(), name().data());
 
         if (auto error{dev.m_thread8.restart()}; error != ThreadX::Error::success)
         {
-            LOG_ERR("%s ThreadX error %u!", threadName, error);
+            LOG_ERR("%s ThreadX error %u!", name().data(), error);
             break;
         }
     }
 }
 
-ThreadFileSystem::ThreadFileSystem(
-    const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, void *driverInfoPtr)
-    : Thread(name, pool, stackSize), m_media(driverCallback, driverInfoPtr)
+ThreadFileSystem::ThreadFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
+                                   const ThreadBase::NotifyCallback &notifyCallback, void *driverInfoPtr)
+    : Thread(name, pool, stackSize, notifyCallback), m_media(driverCallback, driverInfoPtr)
 {
 }
 
 void ThreadFileSystem::entryCallback()
 {
-    const auto threadName{name().data()};
-    LOG_INFO("%s entered", threadName);
     FileX::Error error{m_media.open("media")};
 
     do
@@ -441,13 +433,13 @@ void ThreadFileSystem::entryCallback()
                 LOG_INFO("Success reading file.");
             }
 
-            LOG_INFO("%s max stack used: %u%%", threadName, stackInfo().maxUsedPercent);
+            LOG_INFO("%s max stack used: %u%%", name().data(), stackInfo().maxUsedPercent);
 
             ThreadX::ThisThread::sleepFor(1s);
         };
     } while (0);
 
-    LOG_ERR("%s error %u!", threadName, error);
+    LOG_ERR("%s error %u!", name().data(), error);
 }
 
 void ThreadFileSystem::driverCallback(FileX::Media<> &media)

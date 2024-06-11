@@ -135,7 +135,8 @@ class Thread9 : public Thread
 class ThreadFileSystem : public Thread
 {
   public:
-    ThreadFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, void *driverInfoPtr);
+    ThreadFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
+                     const ThreadBase::NotifyCallback &notifyCallback, void *driverInfoPtr);
 
   private:
     void entryCallback() final;

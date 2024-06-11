@@ -46,7 +46,7 @@ namespace ThreadX::Native
 extern "C" void _fx_ram_driver(FX_MEDIA *media_ptr);
 } // namespace ThreadX::Native
 
-static void statckErrorCallback(ThreadX::Thread &thread)
+static void statckErrorCallback(ThreadX::ThreadBase &thread)
 {
     LOG_ERR("Stack Overflow in %s", thread.name().data());
 }
@@ -54,12 +54,12 @@ static void statckErrorCallback(ThreadX::Thread &thread)
 void runTestCode()
 {
     Logger::init(Logger::Type::debug);
-    ThreadX::Thread::registerStackErrorNotifyCallback(statckErrorCallback);
+    Thread::registerStackErrorNotifyCallback(statckErrorCallback);
     Device::instance();
 }
 
 Device::Device()
-    : m_memoryPool(), m_thread0("thread 0", m_memoryPool, thread0StackSize, {}, 1, 1),
+    : m_memoryPool("byte pool"), m_thread0("thread 0", m_memoryPool, thread0StackSize, {}, 1, 1),
       m_thread1("thread 1", m_memoryPool, thread1StackSize, {}, 16, 16, 4),
       m_thread2("thread 2", m_memoryPool, thread2StackSize, {}, 16, 16, 4),
       m_thread3("thread 3", m_memoryPool, thread3StackSize, {}, 8, 8),
@@ -115,16 +115,8 @@ Thread1::Thread1(const std::string_view name, ThreadPool &pool, ThreadX::Ulong s
                  const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority, ThreadX::Uint preamptionThresh,
                  ThreadX::Ulong timeSlice)
     : Thread(name, pool, stackSize, entryExitNotifyCallback, priority, preamptionThresh, timeSlice),
-      m_timer1(500ms, std::bind_front(&Thread1::timerCallback, this)),
-      m_timer2(1s, std::bind_front(&Thread1::timerCallback, this))
-{
-}
-
-Thread2::Thread2(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
-                 const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority, ThreadX::Uint preamptionThresh,
-                 ThreadX::Ulong timeSlice)
-    : Thread(name, pool, stackSize, entryExitNotifyCallback, priority, preamptionThresh, timeSlice),
-      m_timer(2s, std::bind_front(&Thread2::timerCallback, this))
+      m_timer1("timer1", 500ms, std::bind_front(&Thread1::timerCallback, this)),
+      m_timer2("timer2", 1s, std::bind_front(&Thread1::timerCallback, this))
 {
 }
 
@@ -165,6 +157,14 @@ void Thread1::timerCallback(const uint32_t id)
     {
         ++timer2_counter;
     }
+}
+
+Thread2::Thread2(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
+                 const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority, ThreadX::Uint preamptionThresh,
+                 ThreadX::Ulong timeSlice)
+    : Thread(name, pool, stackSize, entryExitNotifyCallback, priority, preamptionThresh, timeSlice),
+      m_timer("timer3", 2s, std::bind_front(&Thread2::timerCallback, this))
+{
 }
 
 void Thread2::entryCallback()
@@ -211,7 +211,7 @@ void Thread2::timerCallback(const uint32_t callbackID)
     }
 }
 
-void Thread2::queueCallback([[maybe_unused]] MsgQueue &queue)
+void Thread2::queueCallback(ThreadX::QueueBase<uint32_t> &queue)
 {
     LOG_INFO("%s message callback called.", queue.name().data());
 }
@@ -238,7 +238,7 @@ void Thread3_4::entryCallback()
 
         LOG_INFO("%s acquired.", semaphoreName);
         /* Sleep for 2 ticks to hold the semaphore.  */
-        ThreadX::ThisThread::sleepFor(20ms);
+        ThreadX::ThisThread::sleepFor(100ms);
         /* Release the semaphore.  */
         if (error = dev.m_semaphore.release(); error != ThreadX::Error::success)
         {
@@ -307,7 +307,7 @@ void Thread6_7::entryCallback()
 
         LOG_INFO("mutex Locked.");
         /* Sleep for 2 ticks to hold the mutex.  */
-        ThreadX::ThisThread::sleepFor(20ms);
+        ThreadX::ThisThread::sleepFor(100ms);
         /* Release the mutex.  */
         if (error = dev.m_mutex.unlock(); error != ThreadX::Error::success)
         {
@@ -328,12 +328,11 @@ void Thread6_7::entryCallback()
     LOG_ERR("%s ThreadX error %u!", threadName, error);
 }
 
-void Thread8::enteryExitNotifyCallback(
-    [[maybe_unused]] ThreadX::Thread &thread, const ThreadX::Thread::NotifyCondition condition)
+void Thread8::enteryExitNotifyCallback([[maybe_unused]] ThreadBase &thread, const Thread::NotifyCondition condition)
 {
     const auto threadName{name().data()};
 
-    if (condition == ThreadX::Thread::NotifyCondition::entry)
+    if (condition == Thread::NotifyCondition::entry)
     {
         LOG_INFO("%s entry callback called.", threadName);
     }
@@ -382,18 +381,18 @@ void ThreadFileSystem::entryCallback()
 {
     const auto threadName{name().data()};
     LOG_INFO("%s entered", threadName);
-    FileX::Error error{m_media.open()};
+    FileX::Error error{m_media.open("media")};
 
     do
     {
         if (error == FileX::Error::bootError)
         {
-            if (error = m_media.format(20 * 512); error != FileX::Error::success)
+            if (error = m_media.format("disk", 20 * 512); error != FileX::Error::success)
             {
                 break;
             }
 
-            if (error = m_media.open(); error != FileX::Error::success)
+            if (error = m_media.open("media"); error != FileX::Error::success)
             {
                 break;
             }
@@ -443,6 +442,8 @@ void ThreadFileSystem::entryCallback()
             }
 
             LOG_INFO("%s max stack used: %u%%", threadName, stackInfo().maxUsedPercent);
+
+            ThreadX::ThisThread::sleepFor(1s);
         };
     } while (0);
 

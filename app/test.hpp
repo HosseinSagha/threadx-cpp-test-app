@@ -140,7 +140,7 @@ class ThreadFileSystem : public Thread
 
   private:
     void entryCallback() final;
-    static void driverCallback(FileX::Media<> &media);
+    static void driverCallback(ThreadX::Native::FX_MEDIA *mediaPtr);
 
     FileX::Media<> m_media;
 };

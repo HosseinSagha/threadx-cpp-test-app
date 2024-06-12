@@ -442,7 +442,7 @@ void ThreadFileSystem::entryCallback()
     LOG_ERR("%s error %u!", name().data(), error);
 }
 
-void ThreadFileSystem::driverCallback(FileX::Media<> &media)
+void ThreadFileSystem::driverCallback(ThreadX::Native::FX_MEDIA *mediaPtr)
 {
-    _fx_ram_driver(media.getAddress());
+    _fx_ram_driver(mediaPtr);
 }

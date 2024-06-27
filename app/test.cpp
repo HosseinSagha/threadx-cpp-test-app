@@ -3,6 +3,7 @@
 #include "file.hpp"
 #include "jLogger.hpp"
 #include "mutex.hpp"
+#include "norFlash.hpp"
 #include "semaphore.hpp"
 #include "trace.hpp"
 
@@ -26,7 +27,8 @@ class Device
     Thread6_7 m_thread7;
     Thread8 m_thread8;
     Thread9 m_thread9;
-    ThreadFileSystem m_threadFileSystem;
+    ThreadRamFileSystem m_threadRamFileSystem;
+    ThreadNorFileSystem m_threadNorFileSystem;
     ThreadX::Mutex m_mutex;
     ThreadX::BinarySemaphore m_semaphore;
     ThreadX::EventFlags m_eventFlags;
@@ -39,12 +41,26 @@ class Device
     Device();
 };
 
-static std::byte ramMem[20 * 512];
+static char ramMem[20 * 512];
+static char norMem[20 * 512];
 
 namespace ThreadX::Native
 {
 extern "C" void _fx_ram_driver(FX_MEDIA *media_ptr);
+extern "C" void _fx_nor_flash_simulator_driver(FX_MEDIA *media_ptr);
+extern "C" UINT _lx_nor_flash_simulator_erase_all();
+extern "C" UINT _lx_nor_flash_simulator_read(
+    LX_NOR_FLASH *nor_flash, ULONG *flash_address, ULONG *destination, ULONG words);
+extern "C" UINT _lx_nor_flash_simulator_write(
+    LX_NOR_FLASH *nor_flash, ULONG *flash_address, ULONG *source, ULONG words);
+extern "C" UINT _lx_nor_flash_simulator_block_erase(LX_NOR_FLASH *nor_flash, ULONG block, ULONG erase_count);
+extern "C" UINT _lx_nor_flash_simulator_block_erased_verify(LX_NOR_FLASH *nor_flash, ULONG block);
 } // namespace ThreadX::Native
+
+static ThreadX::Uint nor_flash_simulator_initialize_dummy([[maybe_unused]] ThreadX::Native::LX_NOR_FLASH *nor_flash)
+{
+    return 0;
+}
 
 static void statckErrorCallback(ThreadX::ThreadBase &thread)
 {
@@ -81,7 +97,8 @@ Device::Device()
       m_thread8(
           "thread 8", m_memoryPool, thread8StackSize, std::bind_front(&Thread8::enteryExitNotifyCallback, &m_thread8)),
       m_thread9("thread 9", m_memoryPool, thread9StackSize),
-      m_threadFileSystem("thread FS", m_memoryPool, threadFileSystemStackSize, PrintName(), ramMem), m_mutex(),
+      m_threadRamFileSystem("thread ram FS", m_memoryPool, threadRamFileSystemStackSize, PrintName(), ramMem),
+      m_threadNorFileSystem("thread nor FS", m_memoryPool, threadNorFileSystemStackSize, PrintName()), m_mutex(),
       m_semaphore("semaphore 1", 1), m_eventFlags("event flags 1"),
       m_queue("queue 1", m_memoryPool, queueSize, std::bind_front(&Thread2::queueCallback, &m_thread2))
 {
@@ -365,26 +382,124 @@ void Thread9::entryCallback()
     }
 }
 
-ThreadFileSystem::ThreadFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
-                                   const ThreadBase::NotifyCallback &notifyCallback, void *driverInfoPtr)
-    : Thread(name, pool, stackSize, notifyCallback), m_media(driverCallback, driverInfoPtr)
+ThreadRamFileSystem::ThreadRamFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
+                                         const ThreadBase::NotifyCallback &notifyCallback, void *driverInfoPtr)
+    : Thread(name, pool, stackSize, notifyCallback),
+      m_media(std::bind_front(&ThreadRamFileSystem::driverCallback, this), driverInfoPtr)
 {
 }
 
-void ThreadFileSystem::entryCallback()
+void ThreadRamFileSystem::entryCallback()
 {
-    FileX::Error error{m_media.open("media")};
+    FileX::Error error{m_media.open("ram media")};
 
     do
     {
         if (error == FileX::Error::bootError)
         {
-            if (error = m_media.format("disk", 20 * 512); error != FileX::Error::success)
+            if (error = m_media.format("ram disk", 20 * 512); error != FileX::Error::success)
             {
                 break;
             }
 
-            if (error = m_media.open("media"); error != FileX::Error::success)
+            if (error = m_media.open("ram media"); error != FileX::Error::success)
+            {
+                break;
+            }
+        }
+        else if (error != FileX::Error::success)
+        {
+            break;
+        }
+
+        if (error = m_media.createFile("my file.txt"); error != FileX::Error::success)
+        {
+            break;
+        }
+
+        while (true)
+        {
+            FileX::File file("my file.txt", m_media, FileX::OpenOption::write);
+
+            if (error = file.seek(0); error != FileX::Error::success)
+            {
+                break;
+            }
+
+            if (error = file.write(" ABCDEFGHIJKLMNOPQRSTUVWXYZ\n"); error != FileX::Error::success)
+            {
+                break;
+            }
+
+            if (error = file.seek(0); error != FileX::Error::success)
+            {
+                break;
+            }
+
+            std::byte localBuffer[28];
+            ThreadX::Uint actual;
+            if (std::tie(error, actual) = file.read(localBuffer); error != FileX::Error::success)
+            {
+                break;
+            }
+
+            file.close();
+
+            if (actual != 28)
+            {
+                LOG_ERR("Error reading file.");
+                return;
+            }
+            else
+            {
+                LOG_INFO("Success reading file.");
+            }
+
+            LOG_INFO("%s max stack used: %u%%", name().data(), stackInfo().maxUsedPercent);
+
+            ThreadX::ThisThread::sleepFor(1s);
+        };
+    } while (0);
+
+    LOG_ERR("%s error %X!", name().data(), error);
+}
+
+void ThreadRamFileSystem::driverCallback(ThreadX::Native::FX_MEDIA *mediaPtr)
+{
+    _fx_ram_driver(mediaPtr);
+}
+
+ThreadNorFileSystem::ThreadNorFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
+                                         const ThreadBase::NotifyCallback &notifyCallback)
+    : Thread(name, pool, stackSize, notifyCallback),
+      m_media(std::bind_front(&ThreadNorFileSystem::driverCallback, this))
+{
+}
+
+void ThreadNorFileSystem::entryCallback()
+{
+    LevelX::NorFlashBase::Driver driver{
+        nor_flash_simulator_initialize_dummy,
+        ThreadX::Native::_lx_nor_flash_simulator_read,
+        ThreadX::Native::_lx_nor_flash_simulator_write,
+        ThreadX::Native::_lx_nor_flash_simulator_block_erase,
+        ThreadX::Native::_lx_nor_flash_simulator_block_erased_verify,
+        nullptr};
+    LevelX::NorFlash<> norFlash(32 * 512, 4096, driver, reinterpret_cast<ThreadX::Ulong>(norMem));
+
+    FileX::Error error{m_media.open("nor media")};
+
+    do
+    {
+        if (error != FileX::Error::success)
+        {
+            ThreadX::Native::_lx_nor_flash_simulator_erase_all();
+            if (error = m_media.format("nor disk", 32 * 512 - 4096); error != FileX::Error::success)
+            {
+                break;
+            }
+
+            if (error = m_media.open("nor media"); error != FileX::Error::success)
             {
                 break;
             }
@@ -439,10 +554,10 @@ void ThreadFileSystem::entryCallback()
         };
     } while (0);
 
-    LOG_ERR("%s error %u!", name().data(), error);
+    LOG_ERR("%s error 0x%X!", name().data(), error);
 }
 
-void ThreadFileSystem::driverCallback(ThreadX::Native::FX_MEDIA *mediaPtr)
+void ThreadNorFileSystem::driverCallback(ThreadX::Native::FX_MEDIA *mediaPtr)
 {
-    _fx_ram_driver(mediaPtr);
+    _fx_nor_flash_simulator_driver(mediaPtr);
 }

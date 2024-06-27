@@ -17,13 +17,14 @@ inline constexpr ThreadX::Ulong thread6StackSize{ThreadX::ThreadBase::minimumSta
 inline constexpr ThreadX::Ulong thread7StackSize{ThreadX::ThreadBase::minimumStackSize};
 inline constexpr ThreadX::Ulong thread8StackSize{2 * ThreadX::ThreadBase::minimumStackSize};
 inline constexpr ThreadX::Ulong thread9StackSize{ThreadX::ThreadBase::minimumStackSize};
-inline constexpr ThreadX::Ulong threadFileSystemStackSize{3 * ThreadX::ThreadBase::minimumStackSize};
+inline constexpr ThreadX::Ulong threadRamFileSystemStackSize{3 * ThreadX::ThreadBase::minimumStackSize};
+inline constexpr ThreadX::Ulong threadNorFileSystemStackSize{4 * ThreadX::ThreadBase::minimumStackSize};
 inline constexpr ThreadX::Ulong queueSize{100};
 
 inline constexpr ThreadX::Ulong threadMemPoolSize{ThreadX::BytePoolBase::minimumPoolSize(
     {{thread0StackSize, thread1StackSize, thread2StackSize, thread3StackSize, thread4StackSize, thread5StackSize,
-      thread6StackSize, thread7StackSize, thread8StackSize, thread9StackSize, threadFileSystemStackSize,
-      ThreadX::Ulong{sizeof(uint32_t) * queueSize}}})};
+      thread6StackSize, thread7StackSize, thread8StackSize, thread9StackSize, threadRamFileSystemStackSize,
+      threadNorFileSystemStackSize, ThreadX::Ulong{sizeof(uint32_t) * queueSize}}})};
 
 inline constexpr ThreadX::Ulong traceBufferSize{32'000};
 inline constexpr size_t loggerStringReservedMemory{256};
@@ -132,15 +133,28 @@ class Thread9 : public Thread
     void entryCallback() final;
 };
 
-class ThreadFileSystem : public Thread
+class ThreadRamFileSystem : public Thread
 {
   public:
-    ThreadFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
-                     const ThreadBase::NotifyCallback &notifyCallback, void *driverInfoPtr);
+    ThreadRamFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
+                        const ThreadBase::NotifyCallback &notifyCallback, void *driverInfoPtr);
 
   private:
     void entryCallback() final;
-    static void driverCallback(ThreadX::Native::FX_MEDIA *mediaPtr);
+    void driverCallback(ThreadX::Native::FX_MEDIA *mediaPtr);
+
+    FileX::Media<> m_media;
+};
+
+class ThreadNorFileSystem : public Thread
+{
+  public:
+    ThreadNorFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
+                        const ThreadBase::NotifyCallback &notifyCallback);
+
+  private:
+    void entryCallback() final;
+    void driverCallback(ThreadX::Native::FX_MEDIA *mediaPtr);
 
     FileX::Media<> m_media;
 };

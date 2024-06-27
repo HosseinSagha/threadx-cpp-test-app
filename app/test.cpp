@@ -41,8 +41,8 @@ class Device
     Device();
 };
 
-static char ramMem[20 * 512];
-static char norMem[20 * 512];
+static ThreadX::Uchar ramMem[20 * 512];
+static ThreadX::Uchar norMem[20 * 512];
 
 namespace ThreadX::Native
 {
@@ -56,11 +56,6 @@ extern "C" UINT _lx_nor_flash_simulator_write(
 extern "C" UINT _lx_nor_flash_simulator_block_erase(LX_NOR_FLASH *nor_flash, ULONG block, ULONG erase_count);
 extern "C" UINT _lx_nor_flash_simulator_block_erased_verify(LX_NOR_FLASH *nor_flash, ULONG block);
 } // namespace ThreadX::Native
-
-static ThreadX::Uint nor_flash_simulator_initialize_dummy([[maybe_unused]] ThreadX::Native::LX_NOR_FLASH *nor_flash)
-{
-    return 0;
-}
 
 static void statckErrorCallback(ThreadX::ThreadBase &thread)
 {
@@ -479,7 +474,6 @@ ThreadNorFileSystem::ThreadNorFileSystem(const std::string_view name, ThreadPool
 void ThreadNorFileSystem::entryCallback()
 {
     LevelX::NorFlashBase::Driver driver{
-        nor_flash_simulator_initialize_dummy,
         ThreadX::Native::_lx_nor_flash_simulator_read,
         ThreadX::Native::_lx_nor_flash_simulator_write,
         ThreadX::Native::_lx_nor_flash_simulator_block_erase,

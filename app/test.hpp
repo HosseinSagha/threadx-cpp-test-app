@@ -5,6 +5,7 @@
 #include "queue.hpp"
 #include "thread.hpp"
 #include "tickTimer.hpp"
+#include "norFlash.hpp"
 #include <cstddef>
 
 inline constexpr ThreadX::Ulong thread0StackSize{ThreadX::ThreadBase::minimumStackSize};
@@ -156,7 +157,7 @@ class ThreadNorFileSystem : public Thread
     void entryCallback() final;
     void driverCallback(ThreadX::Native::FX_MEDIA *mediaPtr);
 
-    FileX::Media<> m_media;
+    FileX::Media<LevelX::NorFlashBase::sectorSize()> m_media;
 };
 
 void runTestCode();

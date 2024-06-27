@@ -474,11 +474,9 @@ ThreadNorFileSystem::ThreadNorFileSystem(const std::string_view name, ThreadPool
 void ThreadNorFileSystem::entryCallback()
 {
     LevelX::NorFlashBase::Driver driver{
-        ThreadX::Native::_lx_nor_flash_simulator_read,
-        ThreadX::Native::_lx_nor_flash_simulator_write,
+        ThreadX::Native::_lx_nor_flash_simulator_read, ThreadX::Native::_lx_nor_flash_simulator_write,
         ThreadX::Native::_lx_nor_flash_simulator_block_erase,
-        ThreadX::Native::_lx_nor_flash_simulator_block_erased_verify,
-        nullptr};
+        ThreadX::Native::_lx_nor_flash_simulator_block_erased_verify, nullptr};
     LevelX::NorFlash<> norFlash(32 * 512, 4096, driver, reinterpret_cast<ThreadX::Ulong>(norMem));
 
     FileX::Error error{m_media.open("nor media")};
@@ -488,7 +486,8 @@ void ThreadNorFileSystem::entryCallback()
         if (error != FileX::Error::success)
         {
             ThreadX::Native::_lx_nor_flash_simulator_erase_all();
-            if (error = m_media.format("nor disk", 32 * 512 - 4096); error != FileX::Error::success)
+
+            if (error = m_media.format("nor disk", norFlash.formatSize()); error != FileX::Error::success)
             {
                 break;
             }

@@ -7,7 +7,7 @@
 #include <string>
 
 // calling from non-thread (main, interrupt) causes data corruption and hardfault. Such calls are not allowed.
-class JLogger
+class RttLogger
 {
   public:
     enum class Type
@@ -25,8 +25,8 @@ class JLogger
         const Type logType, const std::source_location &location, const std::string_view format, const Args... args);
     static void log(const std::span<const std::byte> buffer);
 
-    JLogger() = delete;
-    ~JLogger() = delete;
+    RttLogger() = delete;
+    ~RttLogger() = delete;
 
   private:
     static void addTime();
@@ -38,10 +38,10 @@ class JLogger
     static inline Type m_logLevel;
 };
 
-static_assert(Logger<JLogger>);
+static_assert(Logger<RttLogger>);
 
 template <typename... Args>
-void JLogger::log(
+void RttLogger::log(
     const Type logType, const std::source_location &location, const std::string_view format, const Args... args)
 {
     assert(ThreadX::Kernel::inThread());
@@ -58,8 +58,8 @@ void JLogger::log(
     }
 }
 
-#define LOG_CLR() JLogger::clear()
-#define LOG_ERR(...) JLogger::log(JLogger::Type::error, std::source_location::current(), __VA_ARGS__)
-#define LOG_WARN(...) JLogger::log(JLogger::Type::warning, std::source_location::current(), __VA_ARGS__)
-#define LOG_INFO(...) JLogger::log(JLogger::Type::info, {}, __VA_ARGS__)
-#define LOG_DBG(...) JLogger::log(JLogger::Type::debug, {}, __VA_ARGS__)
+#define LOG_CLR() RttLogger::clear()
+#define LOG_ERR(...) RttLogger::log(RttLogger::Type::error, std::source_location::current(), __VA_ARGS__)
+#define LOG_WARN(...) RttLogger::log(RttLogger::Type::warning, std::source_location::current(), __VA_ARGS__)
+#define LOG_INFO(...) RttLogger::log(RttLogger::Type::info, {}, __VA_ARGS__)
+#define LOG_DBG(...) RttLogger::log(RttLogger::Type::debug, {}, __VA_ARGS__)

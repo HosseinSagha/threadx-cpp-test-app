@@ -1,13 +1,13 @@
-#include "jLogger.hpp"
+#include "rttLogger.hpp"
 #include "tickTimer.hpp"
 
-void JLogger::init(const Type logLevel, const size_t reservedMsgSize)
+void RttLogger::init(const Type logLevel, const size_t reservedMsgSize)
 {
     m_message.reserve(reservedMsgSize);
     m_logLevel = logLevel;
 }
 
-void JLogger::clear()
+void RttLogger::clear()
 {
     assert(ThreadX::Kernel::inThread());
 
@@ -15,13 +15,13 @@ void JLogger::clear()
     SEGGER_RTT_WriteString(0, RTT_CTRL_CLEAR);
 }
 
-void JLogger::addTime()
+void RttLogger::addTime()
 {
     const auto [t, frac_ms]{ThreadX::TickTimer::to_time_t(ThreadX::TickTimer::now())};
     m_message += std::to_string(t) + std::string(".") + std::to_string(frac_ms) + " ";
 }
 
-void JLogger::addColourControl(const Type logType)
+void RttLogger::addColourControl(const Type logType)
 {
     switch (logType)
     {
@@ -41,7 +41,7 @@ void JLogger::addColourControl(const Type logType)
     }
 }
 
-void JLogger::addMessage(const Type logType, const std::string_view string)
+void RttLogger::addMessage(const Type logType, const std::string_view string)
 {
     m_message += string;
 
@@ -53,7 +53,7 @@ void JLogger::addMessage(const Type logType, const std::string_view string)
     m_message += '\n';
 }
 
-void JLogger::log(const std::span<const std::byte> buffer)
+void RttLogger::log(const std::span<const std::byte> buffer)
 {
     assert(ThreadX::Kernel::inThread());
 

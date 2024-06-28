@@ -1,9 +1,9 @@
 #include "test.hpp"
 #include "eventFlags.hpp"
 #include "file.hpp"
-#include "jLogger.hpp"
 #include "mutex.hpp"
 #include "norFlash.hpp"
+#include "rttLogger.hpp"
 #include "semaphore.hpp"
 #include "trace.hpp"
 
@@ -64,7 +64,7 @@ static void statckErrorCallback(ThreadX::ThreadBase &thread)
 
 void runTestCode()
 {
-    JLogger::init(JLogger::Type::debug);
+    RttLogger::init(RttLogger::Type::debug);
     Thread::registerStackErrorNotifyCallback(statckErrorCallback);
     Device::instance();
 }

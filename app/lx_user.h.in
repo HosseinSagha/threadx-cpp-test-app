@@ -137,9 +137,8 @@
 
 /* Define the logical sector size for NOR flash. The sector size is in units of 32-bit words. 
    This sector size should match the sector size used in file system.  */
-/*
-#define LX_NOR_SECTOR_SIZE                          (512/sizeof(ULONG))
-*/
+#define LX_NOR_SECTOR_SIZE (512 / sizeof(ULONG))
+#define LX_NATIVE_NOR_SECTOR_SIZE (512 / ThreadX::wordSize)
 
 #define LX_NAND_ENABLE_CONTROL_BLOCK_FOR_DRIVER_INTERFACE
 #define LX_NOR_ENABLE_CONTROL_BLOCK_FOR_DRIVER_INTERFACE

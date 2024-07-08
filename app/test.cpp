@@ -9,6 +9,18 @@
 
 using namespace std::chrono_literals;
 
+enum class Error : size_t
+{
+    none = 0,
+    nullPtrAccess,
+    lengthError,
+    invalidArgument,
+    alreadyInitialised,
+    allocationError,
+    unexpectedValue,
+    unknownError
+};
+
 class Device
 {
   public:

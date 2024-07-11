@@ -67,11 +67,18 @@
         "codecvt": "cpp",
         "source_location": "cpp",
         "stacktrace": "cpp",
-        "xstring": "cpp"
+        "xstring": "cpp",
+        "list": "cpp",
+        "xhash": "cpp",
+        "xmemory": "cpp",
+        "xtr1common": "cpp",
+        "xutility": "cpp",
+        "*.in": "c"
     },
     "editor.formatOnSave": true,
     "clang-format.executable": "clang-format",
     "gitHistory.includeRemoteBranches": true,
+	"cmake.copyCompileCommands": "${workspaceFolder}/_build/compile_commands.json",
     "cmake.options.statusBarVisibility": "hidden",
     "cmake.options.advanced": {
         "configurePreset": {
@@ -93,7 +100,7 @@
             "statusBarVisibility": "visible"
         }
     },
-    "cmake.copyCompileCommands": "${workspaceFolder}/_build/compile_commands.json",
+
     "doxdocgen.c.commentPrefix": "///",
     "doxdocgen.c.firstLine": "///",
     "doxdocgen.c.lastLine": "///",

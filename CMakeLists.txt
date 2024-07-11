@@ -23,12 +23,18 @@ FetchContent_Declare(toolchain-gnu
 FetchContent_MakeAvailable(toolchain-gnu)
 FetchContent_GetProperties(toolchain-gnu SOURCE_DIR TOOLCHAIN_DIR)
 
+FetchContent_Declare(segger-rtt
+                     GIT_REPOSITORY ${GITHUB_SUBDIR}/segger-rtt.git
+                     GIT_TAG origin/main
+                     SYSTEM)
+
 #set toolchain and project
 set(CMAKE_TOOLCHAIN_FILE ${TOOLCHAIN_DIR}/cortex-m4f.cmake)
-
 project(${PROJECT_NAME}
         LANGUAGES C CXX ASM
         VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
+
+FetchContent_MakeAvailable(segger-rtt)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release) #default build type is release

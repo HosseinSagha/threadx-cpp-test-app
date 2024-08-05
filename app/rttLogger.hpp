@@ -18,7 +18,12 @@ class RttLogger
         debug
     };
 
-    static void init(const Type logLevel = Type::warning, const size_t reservedMsgSize = 256);
+#ifdef NDEBUG
+    static constexpr Type defaultLevel{Type::warning};
+#else
+    static constexpr Type defaultLevel{Type::debug};
+#endif
+    static void init(const Type logLevel = defaultLevel, const size_t reservedMsgSize = 256);
     static void clear();
     template <typename... Args>
     static void log(
@@ -33,9 +38,9 @@ class RttLogger
     static void addColourControl(const Type logType);
     static void addMessage(const Type logType, const std::string_view string);
 
-    static inline ThreadX::Mutex m_mutex;
+    static inline ThreadX::Mutex m_mutex{};
     static inline std::string m_message;
-    static inline Type m_logLevel;
+    static inline Type m_logLevel{defaultLevel};
 };
 
 static_assert(Logger<RttLogger>);

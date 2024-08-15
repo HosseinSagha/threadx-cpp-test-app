@@ -450,16 +450,14 @@ void ThreadRamFileSystem::entryCallback()
                 break;
             }
 
-            file.close();
-
             if (actual != 28)
             {
-                LOG_ERR("Error reading file.");
+                LOG_ERR("Error reading file (%s).", name().data());
                 return;
             }
             else
             {
-                LOG_INFO("Success reading file.");
+                LOG_INFO("Success reading file (%s).", name().data());
             }
 
             LOG_INFO("%s max stack used: %u%%", name().data(), stackInfo().maxUsedPercent);
@@ -544,16 +542,14 @@ void ThreadNorFileSystem::entryCallback()
                 break;
             }
 
-            file.close();
-
             if (actual != 28)
             {
-                LOG_ERR("Error reading file.");
+                LOG_ERR("Error reading file (%s).", name().data());
                 return;
             }
             else
             {
-                LOG_INFO("Success reading file.");
+                LOG_INFO("Success reading file (%s).", name().data());
             }
 
             LOG_INFO("%s max stack used: %u%%", name().data(), stackInfo().maxUsedPercent);

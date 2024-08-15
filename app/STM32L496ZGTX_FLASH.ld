@@ -37,12 +37,12 @@
 ENTRY(Reset_Handler)
 
 _Stack_Size = 0x400; /* required amount of stack */
-_Ram_End = ORIGIN(RAM) + LENGTH(RAM) - LENGTH(RAM2);
+_Ram_End = ORIGIN(RAM) + LENGTH(RAM);
 
 /* Memories definition */
 MEMORY
 {
-  RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 320K
+  RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 256K
   RAM2    (xrw)    : ORIGIN = 0x10000000,   LENGTH = 64K
   FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 1024K
 }
@@ -186,7 +186,7 @@ SECTIONS
     . = ALIGN(8);
   } >RAM
 
-  .backup_sram :
+  .backup_sram (NOLOAD):
   {
     . = ALIGN(4);
     *(.backup_sram)
@@ -197,8 +197,17 @@ SECTIONS
   /DISCARD/ :
   {
     libc.a ( * )
+    libc_nano.a ( * )
+    libg.a ( * )
+    libg_nano.a ( * )
     libm.a ( * )
+    libnosys.a ( * )
     libgcc.a ( * )
+    libstdc++.a ( * )
+    libstdc++_nano.a ( * )
+    libstdc++exp.a ( * )
+    libsupc++.a ( * )
+    libsupc++_nano.a ( * )
   }
 
   .ARM.attributes 0 : { *(.ARM.attributes) }

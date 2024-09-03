@@ -73,12 +73,13 @@
         "xmemory": "cpp",
         "xtr1common": "cpp",
         "xutility": "cpp",
-        "*.in": "c"
+        "climits": "cpp",
+        "forward_list": "cpp"
     },
     "editor.formatOnSave": true,
     "clang-format.executable": "clang-format",
     "gitHistory.includeRemoteBranches": true,
-	"cmake.copyCompileCommands": "${workspaceFolder}/_build/compile_commands.json",
+    "cmake.copyCompileCommands": "${workspaceFolder}/_build/compile_commands.json",
     "cmake.options.statusBarVisibility": "hidden",
     "cmake.options.advanced": {
         "configurePreset": {
@@ -100,7 +101,6 @@
             "statusBarVisibility": "visible"
         }
     },
-
     "doxdocgen.c.commentPrefix": "///",
     "doxdocgen.c.firstLine": "///",
     "doxdocgen.c.lastLine": "///",

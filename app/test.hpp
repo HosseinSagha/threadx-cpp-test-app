@@ -2,27 +2,27 @@
 
 #include "media.hpp"
 #include "memoryPool.hpp"
+#include "norFlash.hpp"
 #include "queue.hpp"
 #include "thread.hpp"
 #include "tickTimer.hpp"
-#include "norFlash.hpp"
 #include <cstddef>
 
-inline constexpr ThreadX::Ulong thread0StackSize{ThreadX::ThreadBase::minimumStackSize};
-inline constexpr ThreadX::Ulong thread1StackSize{2 * ThreadX::ThreadBase::minimumStackSize};
-inline constexpr ThreadX::Ulong thread2StackSize{ThreadX::ThreadBase::minimumStackSize};
-inline constexpr ThreadX::Ulong thread3StackSize{ThreadX::ThreadBase::minimumStackSize};
-inline constexpr ThreadX::Ulong thread4StackSize{ThreadX::ThreadBase::minimumStackSize};
-inline constexpr ThreadX::Ulong thread5StackSize{ThreadX::ThreadBase::minimumStackSize};
-inline constexpr ThreadX::Ulong thread6StackSize{ThreadX::ThreadBase::minimumStackSize};
-inline constexpr ThreadX::Ulong thread7StackSize{ThreadX::ThreadBase::minimumStackSize};
-inline constexpr ThreadX::Ulong thread8StackSize{2 * ThreadX::ThreadBase::minimumStackSize};
-inline constexpr ThreadX::Ulong thread9StackSize{ThreadX::ThreadBase::minimumStackSize};
-inline constexpr ThreadX::Ulong threadRamFileSystemStackSize{3 * ThreadX::ThreadBase::minimumStackSize};
-inline constexpr ThreadX::Ulong threadNorFileSystemStackSize{4 * ThreadX::ThreadBase::minimumStackSize};
+inline constexpr ThreadX::Ulong thread0StackSize{ThreadX::minimumStackSize};
+inline constexpr ThreadX::Ulong thread1StackSize{2 * ThreadX::minimumStackSize};
+inline constexpr ThreadX::Ulong thread2StackSize{ThreadX::minimumStackSize};
+inline constexpr ThreadX::Ulong thread3StackSize{ThreadX::minimumStackSize};
+inline constexpr ThreadX::Ulong thread4StackSize{ThreadX::minimumStackSize};
+inline constexpr ThreadX::Ulong thread5StackSize{ThreadX::minimumStackSize};
+inline constexpr ThreadX::Ulong thread6StackSize{ThreadX::minimumStackSize};
+inline constexpr ThreadX::Ulong thread7StackSize{ThreadX::minimumStackSize};
+inline constexpr ThreadX::Ulong thread8StackSize{2 * ThreadX::minimumStackSize};
+inline constexpr ThreadX::Ulong thread9StackSize{ThreadX::minimumStackSize};
+inline constexpr ThreadX::Ulong threadRamFileSystemStackSize{3 * ThreadX::minimumStackSize};
+inline constexpr ThreadX::Ulong threadNorFileSystemStackSize{3 * ThreadX::minimumStackSize};
 inline constexpr ThreadX::Ulong queueSize{100};
 
-inline constexpr ThreadX::Ulong threadMemPoolSize{ThreadX::BytePoolBase::minimumPoolSize(
+inline constexpr ThreadX::Ulong threadMemPoolSize{ThreadX::minimumPoolSize(
     {{thread0StackSize, thread1StackSize, thread2StackSize, thread3StackSize, thread4StackSize, thread5StackSize,
       thread6StackSize, thread7StackSize, thread8StackSize, thread9StackSize, threadRamFileSystemStackSize,
       threadNorFileSystemStackSize, ThreadX::Ulong{sizeof(uint32_t) * queueSize}}})};
@@ -33,6 +33,7 @@ inline constexpr size_t loggerStringReservedMemory{256};
 using ThreadPool = ThreadX::BytePool<threadMemPoolSize>;
 using Thread = ThreadX::Thread<ThreadPool>;
 using MsgQueue = ThreadX::Queue<uint32_t, ThreadPool>;
+using NorFlash = LevelX::NorFlash<>;
 
 class Thread0 : public Thread
 {
@@ -70,7 +71,7 @@ class Thread2 : public Thread
     Thread2(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
             const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority, ThreadX::Uint preamptionThresh,
             ThreadX::Ulong timeSlice);
-    void queueCallback(ThreadX::QueueBase<uint32_t> &queue);
+    void queueCallback(MsgQueue &queue);
 
   private:
     void entryCallback() final;
@@ -119,7 +120,6 @@ class Thread8 : public Thread
 {
   public:
     using Thread<ThreadPool>::Thread;
-    void enteryExitNotifyCallback(ThreadBase &thread, const Thread::NotifyCondition condition);
 
   private:
     void entryCallback() final;
@@ -134,30 +134,60 @@ class Thread9 : public Thread
     void entryCallback() final;
 };
 
+class RamMedia : public FileX::Media<>
+{
+  public:
+    RamMedia(std::byte *driverInfoPtr);
+    void driverCallback() final;
+};
+
 class ThreadRamFileSystem : public Thread
 {
   public:
     ThreadRamFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
-                        const ThreadBase::NotifyCallback &notifyCallback, void *driverInfoPtr);
+                        const Thread::NotifyCallback &notifyCallback, std::byte *driverInfoPtr);
 
   private:
     void entryCallback() final;
-    void driverCallback(ThreadX::Native::FX_MEDIA *mediaPtr);
 
-    FileX::Media<> m_media;
+    RamMedia m_media;
+};
+
+class NorFlashDriver : public NorFlash
+{
+  public:
+    NorFlashDriver(const ThreadX::Ulong storageSize, const ThreadX::Ulong blockSize, const ThreadX::Ulong baseAddress);
+
+    LevelX::Error readCallback(
+        ThreadX::Ulong *flashAddress, ThreadX::Ulong *destination, const ThreadX::Ulong words) final;
+    LevelX::Error writeCallback(ThreadX::Ulong *flashAddress, ThreadX::Ulong *source, const ThreadX::Ulong words) final;
+    LevelX::Error eraseBlockCallback(const ThreadX::Ulong block, const ThreadX::Ulong eraseCount) final;
+    LevelX::Error verifyErasedBlockCallback(const ThreadX::Ulong block) final;
+};
+
+class NorMedia : public FileX::Media<NorFlash::sectorSize()>
+{
+  public:
+    friend void norFlashSimulatorMediaDriver(NorMedia &media);
+
+    NorMedia(NorFlashDriver &m_norFlash);
+    void driverCallback() final;
+
+  private:
+    NorFlashDriver &m_norFlash;
 };
 
 class ThreadNorFileSystem : public Thread
 {
   public:
     ThreadNorFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
-                        const ThreadBase::NotifyCallback &notifyCallback);
+                        const Thread::NotifyCallback &notifyCallback);
 
   private:
     void entryCallback() final;
-    void driverCallback(ThreadX::Native::FX_MEDIA *mediaPtr);
 
-    FileX::Media<LevelX::NorFlashBase::sectorSize()> m_media;
+    NorFlashDriver m_norFlash;
+    NorMedia m_media;
 };
 
 void runTestCode();

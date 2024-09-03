@@ -5,6 +5,7 @@
 #include "norFlash.hpp"
 #include "rttLogger.hpp"
 #include "semaphore.hpp"
+#include "simulatorMediaDriver.hpp"
 #include "trace.hpp"
 
 using namespace std::chrono_literals;
@@ -53,23 +54,14 @@ class Device
     Device();
 };
 
-static ThreadX::Uchar ramMem[20 * 512];
-static ThreadX::Uchar norMem[20 * 512];
+static std::byte ramMem[20 * 512];
 
 namespace ThreadX::Native
 {
 extern "C" void _fx_ram_driver(FX_MEDIA *media_ptr);
-extern "C" void _fx_nor_flash_simulator_driver(FX_MEDIA *media_ptr);
-extern "C" UINT _lx_nor_flash_simulator_erase_all();
-extern "C" UINT _lx_nor_flash_simulator_read(
-    LX_NOR_FLASH *nor_flash, ULONG *flash_address, ULONG *destination, ULONG words);
-extern "C" UINT _lx_nor_flash_simulator_write(
-    LX_NOR_FLASH *nor_flash, ULONG *flash_address, ULONG *source, ULONG words);
-extern "C" UINT _lx_nor_flash_simulator_block_erase(LX_NOR_FLASH *nor_flash, ULONG block, ULONG erase_count);
-extern "C" UINT _lx_nor_flash_simulator_block_erased_verify(LX_NOR_FLASH *nor_flash, ULONG block);
 } // namespace ThreadX::Native
 
-static void statckErrorCallback(ThreadX::ThreadBase &thread)
+static void stackErrorCallback(Thread &thread)
 {
     LOG_ERR("Stack Overflow in %s", thread.name().data());
 }
@@ -77,17 +69,21 @@ static void statckErrorCallback(ThreadX::ThreadBase &thread)
 void runTestCode()
 {
     RttLogger::init(RttLogger::Type::debug);
-    Thread::registerStackErrorNotifyCallback(statckErrorCallback);
+    Thread::registerStackErrorNotifyCallback(stackErrorCallback);
     Device::instance();
 }
 
 struct PrintName
 {
-    void operator()(ThreadX::ThreadBase &thread, ThreadX::ThreadBase::NotifyCondition cond) const
+    void operator()(Thread &thread, ThreadX::ThreadNotifyCondition cond) const
     {
-        if (cond == ThreadX::ThreadBase::NotifyCondition::entry)
+        if (cond == ThreadX::ThreadNotifyCondition::entry)
         {
             LOG_INFO("%s entered", thread.name().data());
+        }
+        else
+        {
+            LOG_INFO("%s exited", thread.name().data());
         }
     }
 };
@@ -101,8 +97,7 @@ Device::Device()
       m_thread5("thread 5", m_memoryPool, thread5StackSize, PrintName(), 4, 4),
       m_thread6("thread 6", m_memoryPool, thread6StackSize, PrintName(), 8, 8),
       m_thread7("thread 7", m_memoryPool, thread7StackSize, PrintName(), 8, 8),
-      m_thread8(
-          "thread 8", m_memoryPool, thread8StackSize, std::bind_front(&Thread8::enteryExitNotifyCallback, &m_thread8)),
+      m_thread8("thread 8", m_memoryPool, thread8StackSize, PrintName()),
       m_thread9("thread 9", m_memoryPool, thread9StackSize),
       m_threadRamFileSystem("thread ram FS", m_memoryPool, threadRamFileSystemStackSize, PrintName(), ramMem),
       m_threadNorFileSystem("thread nor FS", m_memoryPool, threadNorFileSystemStackSize, PrintName()), m_mutex(),
@@ -173,6 +168,8 @@ void Thread1::entryCallback()
         LOG_INFO("No. of message sent: %u", m_messages_sent);
         LOG_INFO("Timer1 callback counter: %u", timer1_counter);
         LOG_INFO("Timer2 callback counter: %u", timer2_counter);
+
+        ThreadX::ThisThread::sleepFor(100ms);
     }
 }
 
@@ -202,7 +199,6 @@ void Thread2::entryCallback()
 {
     auto &dev{Device::instance()};
     auto queueName{dev.m_queue.name().data()};
-
     /* This thread retrieves messages placed on the queue by thread 1.  */
     while (1)
     {
@@ -240,7 +236,7 @@ void Thread2::timerCallback(const uint32_t callbackID)
     }
 }
 
-void Thread2::queueCallback(ThreadX::QueueBase<uint32_t> &queue)
+void Thread2::queueCallback(MsgQueue &queue)
 {
     LOG_INFO("%s message callback called.", queue.name().data());
 }
@@ -250,6 +246,7 @@ void Thread3_4::entryCallback()
     auto &dev{Device::instance()};
     auto semaphoreName{dev.m_semaphore.name().data()};
     ThreadX::Error error{};
+
     /* This function is executed from thread 3 and thread 4.  As the loop
        below shows, these function compete for ownership of semaphore_0.  */
     while (1)
@@ -352,18 +349,6 @@ void Thread6_7::entryCallback()
     LOG_ERR("%s ThreadX error %u!", name().data(), error);
 }
 
-void Thread8::enteryExitNotifyCallback([[maybe_unused]] ThreadBase &thread, const Thread::NotifyCondition condition)
-{
-    if (condition == Thread::NotifyCondition::entry)
-    {
-        LOG_INFO("%s entry callback called.", name().data());
-    }
-    else
-    {
-        LOG_INFO("%s exit callback called.", name().data());
-    }
-}
-
 void Thread8::entryCallback()
 {
     if (auto error{ThreadX::ThisThread::sleepFor(3s)}; error != ThreadX::Error::success)
@@ -389,10 +374,19 @@ void Thread9::entryCallback()
     }
 }
 
-ThreadRamFileSystem::ThreadRamFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
-                                         const ThreadBase::NotifyCallback &notifyCallback, void *driverInfoPtr)
-    : Thread(name, pool, stackSize, notifyCallback),
-      m_media(std::bind_front(&ThreadRamFileSystem::driverCallback, this), driverInfoPtr)
+RamMedia::RamMedia(std::byte *driverInfoPtr) : Media(driverInfoPtr)
+{
+}
+
+void RamMedia::driverCallback()
+{
+    _fx_ram_driver(this);
+}
+
+ThreadRamFileSystem::ThreadRamFileSystem(
+    const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
+    const Thread::NotifyCallback &notifyCallback, [[maybe_unused]] std::byte *driverInfoPtr)
+    : Thread(name, pool, stackSize, notifyCallback), m_media(driverInfoPtr)
 {
 }
 
@@ -469,38 +463,61 @@ void ThreadRamFileSystem::entryCallback()
     LOG_ERR("%s error %X!", name().data(), error);
 }
 
-void ThreadRamFileSystem::driverCallback(ThreadX::Native::FX_MEDIA *mediaPtr)
+NorMedia::NorMedia(NorFlashDriver &norFlash) : m_norFlash{norFlash}
 {
-    _fx_ram_driver(mediaPtr);
+}
+
+void NorMedia::driverCallback()
+{
+    norFlashSimulatorMediaDriver(*this);
+}
+
+NorFlashDriver::NorFlashDriver(
+    const ThreadX::Ulong storageSize, const ThreadX::Ulong blockSize, const ThreadX::Ulong baseAddress)
+    : NorFlash(storageSize, blockSize, baseAddress)
+{
+}
+
+LevelX::Error NorFlashDriver::readCallback(
+    ThreadX::Ulong *flashAddress, ThreadX::Ulong *destination, const ThreadX::Ulong words)
+{
+    return norFlashSimulatorRead(flashAddress, destination, words);
+}
+
+LevelX::Error NorFlashDriver::writeCallback(
+    ThreadX::Ulong *flashAddress, ThreadX::Ulong *source, const ThreadX::Ulong words)
+{
+    return norFlashSimulatorWrite(flashAddress, source, words);
+}
+
+LevelX::Error NorFlashDriver::eraseBlockCallback(const ThreadX::Ulong block, const ThreadX::Ulong eraseCount)
+{
+    return norFlashSimulatorBlockErase(block, eraseCount);
+}
+
+LevelX::Error NorFlashDriver::verifyErasedBlockCallback(const ThreadX::Ulong block)
+{
+    return norFlashSimulatorBlockErasedVerify(block);
 }
 
 ThreadNorFileSystem::ThreadNorFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
-                                         const ThreadBase::NotifyCallback &notifyCallback)
+                                         const Thread::NotifyCallback &notifyCallback)
     : Thread(name, pool, stackSize, notifyCallback),
-      m_media(std::bind_front(&ThreadNorFileSystem::driverCallback, this))
+      m_norFlash(sizeof(norMem), sizeof(FlashBlock), reinterpret_cast<ThreadX::Ulong>(norMem)), m_media{m_norFlash}
 {
 }
 
 void ThreadNorFileSystem::entryCallback()
 {
-    LevelX::NorFlashBase::Driver driver{
-        nullptr,
-        ThreadX::Native::_lx_nor_flash_simulator_read,
-        ThreadX::Native::_lx_nor_flash_simulator_write,
-        ThreadX::Native::_lx_nor_flash_simulator_block_erase,
-        ThreadX::Native::_lx_nor_flash_simulator_block_erased_verify,
-        nullptr};
-    LevelX::NorFlash<> norFlash(32 * 512, 4096, driver, reinterpret_cast<ThreadX::Ulong>(norMem));
-
     FileX::Error error{m_media.open("nor media")};
 
     do
     {
         if (error != FileX::Error::success)
         {
-            ThreadX::Native::_lx_nor_flash_simulator_erase_all();
+            norFlashSimulatorEraseAll();
 
-            if (error = m_media.format("nor disk", norFlash.formatSize()); error != FileX::Error::success)
+            if (error = m_media.format("nor disk", m_norFlash.formatSize()); error != FileX::Error::success)
             {
                 break;
             }
@@ -559,9 +576,4 @@ void ThreadNorFileSystem::entryCallback()
     } while (0);
 
     LOG_ERR("%s error 0x%X!", name().data(), error);
-}
-
-void ThreadNorFileSystem::driverCallback(ThreadX::Native::FX_MEDIA *mediaPtr)
-{
-    _fx_nor_flash_simulator_driver(mediaPtr);
 }

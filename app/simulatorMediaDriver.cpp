@@ -322,7 +322,7 @@ LevelX::Error norFlashSimulatorBlockErasedVerify(ThreadX::Ulong block)
     /* Determine if the block is completely erased.  */
 
     /* Pickup the pointer to the first word of the block.  */
-    word_ptr = &norMem[block].erase_count;
+    word_ptr = &norMem[block].eraseCount;
 
     /* Calculate the number of words in a block.  */
     words = sizeof(FlashBlock) / sizeof(ThreadX::Ulong);

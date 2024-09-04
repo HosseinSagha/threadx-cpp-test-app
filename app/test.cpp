@@ -517,7 +517,7 @@ void ThreadNorFileSystem::entryCallback()
         {
             norFlashSimulatorEraseAll();
 
-            if (error = m_media.format("nor disk", m_norFlash.formatSize()); error != FileX::Error::success)
+            if (error = m_media.format("nor disk", m_norFlash.mediaFormatSize()); error != FileX::Error::success)
             {
                 break;
             }

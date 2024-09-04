@@ -2,20 +2,20 @@
 
 #include "fxCommon.hpp"
 #include "lxCommon.hpp"
+#include "norFlash.hpp"
 
 class NorMedia;
 
 constexpr auto TOTAL_BLOCKS{8};
 constexpr auto PHYSICAL_SECTORS_PER_BLOCK{16}; /* Min value of 2, max value of 120 for 1 sector of overhead.  */
-constexpr auto WORDS_PER_PHYSICAL_SECTOR{128};
-constexpr auto FREE_BIT_MAP_WORDS{((PHYSICAL_SECTORS_PER_BLOCK - 1) / 32) + 1};
 constexpr auto USABLE_SECTORS_PER_BLOCK{PHYSICAL_SECTORS_PER_BLOCK - 1};
+constexpr auto FREE_BIT_MAP_WORDS{((USABLE_SECTORS_PER_BLOCK - 1) / 32) + 1};
 constexpr auto UNUSED_METADATA_WORDS_PER_BLOCK{
-    WORDS_PER_PHYSICAL_SECTOR - (3 + FREE_BIT_MAP_WORDS + USABLE_SECTORS_PER_BLOCK)};
+    LevelX::norSectorSizeInWord - (3 + FREE_BIT_MAP_WORDS + USABLE_SECTORS_PER_BLOCK)};
 
 struct PhysicalSector
 {
-    ThreadX::Ulong memory[WORDS_PER_PHYSICAL_SECTOR];
+    ThreadX::Ulong memory[LevelX::norSectorSizeInWord];
 };
 
 struct FlashBlock

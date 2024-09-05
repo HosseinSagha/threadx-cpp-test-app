@@ -42,6 +42,7 @@ class Thread0 : public Thread
 {
   public:
     using Thread::Thread;
+    virtual ~Thread0() = default;
 
   private:
     void entryCallback() final;
@@ -55,6 +56,7 @@ class Thread1 : public Thread
     Thread1(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
             const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority, ThreadX::Uint preamptionThresh,
             ThreadX::Ulong timeSlice);
+    virtual ~Thread1() = default;
 
   private:
     void entryCallback() final;
@@ -74,6 +76,8 @@ class Thread2 : public Thread
     Thread2(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
             const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority, ThreadX::Uint preamptionThresh,
             ThreadX::Ulong timeSlice);
+    virtual ~Thread2() = default;
+
     void queueCallback(MsgQueue &queue);
 
   private:
@@ -91,6 +95,8 @@ class Thread3_4 : public Thread
   public:
     using Thread::Thread;
 
+    virtual ~Thread3_4() = default;
+
   private:
     void entryCallback() final;
 
@@ -101,6 +107,8 @@ class Thread5 : public Thread
 {
   public:
     using Thread::Thread;
+
+    virtual ~Thread5() = default;
 
   private:
     void entryCallback() final;
@@ -113,6 +121,8 @@ class Thread6_7 : public Thread
   public:
     using Thread::Thread;
 
+    virtual ~Thread6_7() = default;
+
   private:
     void entryCallback() final;
 
@@ -124,6 +134,8 @@ class Thread8 : public Thread
   public:
     using Thread<ThreadPool>::Thread;
 
+    virtual ~Thread8() = default;
+
   private:
     void entryCallback() final;
 };
@@ -133,6 +145,8 @@ class Thread9 : public Thread
   public:
     using Thread::Thread;
 
+    virtual ~Thread9() = default;
+
   private:
     void entryCallback() final;
 };
@@ -141,6 +155,8 @@ class RamMedia : public FileX::Media<>
 {
   public:
     RamMedia(std::byte *driverInfoPtr);
+    virtual ~RamMedia() = default;
+
     void driverCallback() final;
 };
 
@@ -149,6 +165,7 @@ class ThreadRamFileSystem : public Thread
   public:
     ThreadRamFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
                         const Thread::NotifyCallback &notifyCallback, std::byte *driverInfoPtr);
+    virtual ~ThreadRamFileSystem() = default;
 
   private:
     void entryCallback() final;
@@ -159,7 +176,8 @@ class ThreadRamFileSystem : public Thread
 class NorFlashDriver : public NorFlash
 {
   public:
-    NorFlashDriver(const ThreadX::Ulong storageSize, const ThreadX::Ulong baseAddress);
+    using NorFlash::NorFlash;
+    virtual ~NorFlashDriver() = default;
 
     LevelX::Error readCallback(
         ThreadX::Ulong *flashAddress, ThreadX::Ulong *destination, const ThreadX::Ulong words) final;
@@ -171,12 +189,11 @@ class NorFlashDriver : public NorFlash
 class NorMedia : public FileX::Media<NorFlash::sectorSize()>
 {
   public:
-    friend void norFlashSimulatorMediaDriver(NorMedia &media);
-
     NorMedia(NorFlashDriver &m_norFlash);
+    virtual ~NorMedia() = default;
+
     void driverCallback() final;
 
-  private:
     NorFlashDriver &m_norFlash;
 };
 
@@ -185,6 +202,7 @@ class ThreadNorFileSystem : public Thread
   public:
     ThreadNorFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
                         const Thread::NotifyCallback &notifyCallback);
+    virtual ~ThreadNorFileSystem() = default;
 
   private:
     void entryCallback() final;

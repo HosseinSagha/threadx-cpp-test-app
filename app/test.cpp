@@ -465,11 +465,6 @@ void NorMedia::driverCallback()
     norFlashSimulatorMediaDriver(*this);
 }
 
-NorFlashDriver::NorFlashDriver(const ThreadX::Ulong storageSize, const ThreadX::Ulong baseAddress)
-    : NorFlash(storageSize, baseAddress)
-{
-}
-
 LevelX::Error NorFlashDriver::readCallback(
     ThreadX::Ulong *flashAddress, ThreadX::Ulong *destination, const ThreadX::Ulong words)
 {

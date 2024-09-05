@@ -33,7 +33,10 @@ inline constexpr size_t loggerStringReservedMemory{256};
 using ThreadPool = ThreadX::BytePool<threadMemPoolSize>;
 using Thread = ThreadX::Thread<ThreadPool>;
 using MsgQueue = ThreadX::Queue<uint32_t, ThreadPool>;
-using NorFlash = LevelX::NorFlash<>;
+using NorFlash = LevelX::NorFlash<16>;
+
+inline constexpr auto norStorageSize{64 * 1024};
+inline constexpr auto norBlocks{norStorageSize / sizeof(NorFlash::Block)};
 
 class Thread0 : public Thread
 {
@@ -156,7 +159,7 @@ class ThreadRamFileSystem : public Thread
 class NorFlashDriver : public NorFlash
 {
   public:
-    NorFlashDriver(const ThreadX::Ulong storageSize, const ThreadX::Ulong blockSize, const ThreadX::Ulong baseAddress);
+    NorFlashDriver(const ThreadX::Ulong storageSize, const ThreadX::Ulong baseAddress);
 
     LevelX::Error readCallback(
         ThreadX::Ulong *flashAddress, ThreadX::Ulong *destination, const ThreadX::Ulong words) final;

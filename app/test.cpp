@@ -54,13 +54,6 @@ class Device
     Device();
 };
 
-static std::byte ramMem[20 * 512];
-
-namespace ThreadX::Native
-{
-extern "C" void _fx_ram_driver(FX_MEDIA *media_ptr);
-} // namespace ThreadX::Native
-
 static void stackErrorCallback(Thread &thread)
 {
     LOG_ERR("Stack Overflow in %s", thread.name().data());
@@ -380,7 +373,7 @@ RamMedia::RamMedia(std::byte *driverInfoPtr) : Media(driverInfoPtr)
 
 void RamMedia::driverCallback()
 {
-    _fx_ram_driver(this);
+    ramDriver(*this);
 }
 
 ThreadRamFileSystem::ThreadRamFileSystem(
@@ -472,9 +465,8 @@ void NorMedia::driverCallback()
     norFlashSimulatorMediaDriver(*this);
 }
 
-NorFlashDriver::NorFlashDriver(
-    const ThreadX::Ulong storageSize, const ThreadX::Ulong blockSize, const ThreadX::Ulong baseAddress)
-    : NorFlash(storageSize, blockSize, baseAddress)
+NorFlashDriver::NorFlashDriver(const ThreadX::Ulong storageSize, const ThreadX::Ulong baseAddress)
+    : NorFlash(storageSize, baseAddress)
 {
 }
 
@@ -503,7 +495,7 @@ LevelX::Error NorFlashDriver::verifyErasedBlockCallback(const ThreadX::Ulong blo
 ThreadNorFileSystem::ThreadNorFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
                                          const Thread::NotifyCallback &notifyCallback)
     : Thread(name, pool, stackSize, notifyCallback),
-      m_norFlash(sizeof(norMem), sizeof(FlashBlock), reinterpret_cast<ThreadX::Ulong>(norMem)), m_media{m_norFlash}
+      m_norFlash(sizeof(norMem), reinterpret_cast<ThreadX::Ulong>(norMem)), m_media{m_norFlash}
 {
 }
 

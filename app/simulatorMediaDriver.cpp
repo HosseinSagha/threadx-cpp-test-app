@@ -1,25 +1,21 @@
 #include "simulatorMediaDriver.hpp"
 #include "test.hpp"
 
-FlashBlock norMem[TOTAL_BLOCKS];
+std::byte ramMem[20 * 512];
+NorFlash::Block norMem[norBlocks];
 
-void norFlashSimulatorMediaDriver(NorMedia &norMedia)
-{
-    ThreadX::Uchar *source_buffer;
-    ThreadX::Uchar *destination_buffer;
-    ThreadX::Ulong logical_sector;
+/* There are several useful/important pieces of information contained in
+       the media structure, some of which are supplied by FileX and others
+       are for the driver to setup. The following is a summary of the
+       necessary FX_MEDIA structure members:
 
-    /* There are several useful/important pieces of information contained in the media
-       structure, some of which are supplied by FileX and others are for the driver to
-       setup. The following is a summary of the necessary FX_MEDIA structure members:
-       
-            FX_MEDIA Member                              Meaning
-                                        
-        fx_media_driver_request             FileX request type. Valid requests from FileX are 
-                                            as follows:
+            FX_MEDIA Member                    Meaning
+
+        fx_media_driver_request             FileX request type. Valid requests from
+                                            FileX are as follows:
 
                                                     FX_DRIVER_READ
-                                                    FX_DRIVER_WRITE                 
+                                                    FX_DRIVER_WRITE
                                                     FX_DRIVER_FLUSH
                                                     FX_DRIVER_ABORT
                                                     FX_DRIVER_INIT
@@ -28,14 +24,16 @@ void norFlashSimulatorMediaDriver(NorMedia &norMedia)
                                                     FX_DRIVER_BOOT_WRITE
                                                     FX_DRIVER_UNINIT
 
-        fx_media_driver_status              This value is RETURNED by the driver. If the 
-                                            operation is successful, this field should be
-                                            set to FX_SUCCESS for before returning. Otherwise,
-                                            if an error occurred, this field should be set
-                                            to FX_IO_ERROR. 
+        fx_media_driver_status              This value is RETURNED by the driver.
+                                            If the operation is successful, this
+                                            field should be set to FX_SUCCESS for
+                                            before returning. Otherwise, if an
+                                            error occurred, this field should be
+                                            set to FX_IO_ERROR.
 
-        fx_media_driver_buffer              Pointer to buffer to read or write sector data.
-                                            This is supplied by FileX.
+        fx_media_driver_buffer              Pointer to buffer to read or write
+                                            sector data. This is supplied by
+                                            FileX.
 
         fx_media_driver_logical_sector      Logical sector FileX is requesting.
 
@@ -43,107 +41,237 @@ void norFlashSimulatorMediaDriver(NorMedia &norMedia)
 
 
        The following is a summary of the optional FX_MEDIA structure members:
-       
-            FX_MEDIA Member                              Meaning
-                                        
-        fx_media_driver_info                Pointer to any additional information or memory.
-                                            This is optional for the driver use and is setup
-                                            from the fx_media_open call. The RAM disk uses
-                                            this pointer for the RAM disk memory itself.
 
-        fx_media_driver_write_protect       The DRIVER sets this to FX_TRUE when media is write 
-                                            protected. This is typically done in initialization, 
+            FX_MEDIA Member                              Meaning
+
+        fx_media_driver_info                Pointer to any additional information
+                                            or memory. This is optional for the
+                                            driver use and is setup from the
+                                            fx_media_open call. The RAM disk uses
+                                            this pointer for the RAM disk memory
+                                            itself.
+
+        fx_media_driver_write_protect       The DRIVER sets this to FX_TRUE when
+                                            media is write protected. This is
+                                            typically done in initialization,
                                             but can be done anytime.
 
-        fx_media_driver_free_sector_update  The DRIVER sets this to FX_TRUE when it needs to 
-                                            know when clusters are released. This is important
-                                            for FLASH wear-leveling drivers.
+        fx_media_driver_free_sector_update  The DRIVER sets this to FX_TRUE when
+                                            it needs to know when clusters are
+                                            released. This is important for FLASH
+                                            wear-leveling drivers.
 
-        fx_media_driver_system_write        FileX sets this flag to FX_TRUE if the sector being
-                                            written is a system sector, e.g., a boot, FAT, or 
-                                            directory sector. The driver may choose to use this
-                                            to initiate error recovery logic for greater fault
-                                            tolerance.
+        fx_media_driver_system_write        FileX sets this flag to FX_TRUE if the
+                                            sector being written is a system sector,
+                                            e.g., a boot, FAT, or directory sector.
+                                            The driver may choose to use this to
+                                            initiate error recovery logic for greater
+                                            fault tolerance.
 
-        fx_media_driver_data_sector_read    FileX sets this flag to FX_TRUE if the sector(s) being
-                                            read are file data sectors, i.e., NOT system sectors.
+        fx_media_driver_data_sector_read    FileX sets this flag to FX_TRUE if the
+                                            sector(s) being read are file data sectors,
+                                            i.e., NOT system sectors.
 
-        fx_media_driver_sector_type         FileX sets this variable to the specific type of 
-                                            sector being read or written. The following sector
-                                            types are identified:
+        fx_media_driver_sector_type         FileX sets this variable to the specific
+                                            type of sector being read or written. The
+                                            following sector types are identified:
 
-                                                    FX_UNKNOWN_SECTOR 
+                                                    FX_UNKNOWN_SECTOR
                                                     FX_BOOT_SECTOR
                                                     FX_FAT_SECTOR
                                                     FX_DIRECTORY_SECTOR
-                                                    FX_DATA_SECTOR  
-    */
+                                                    FX_DATA_SECTOR
+     */
 
-    norMedia.fx_media_driver_status = FX_SUCCESS;
+void ramDriver(RamMedia &ramMedia)
+{
+    ThreadX::Uchar *source_buffer;
+    ThreadX::Uchar *destination_buffer;
+    ThreadX::Uint bytes_per_sector;
+
+    ramMedia.driverStatus(FileX::Error::success);
 
     /* Process the driver request specified in the media control block.  */
-    switch (norMedia.fx_media_driver_request)
+    switch (ramMedia.driverRequest())
     {
-    case FX_DRIVER_READ:
+    case FileX::MediaDriverRequest::read:
+        /* Calculate the RAM disk sector offset. Note the RAM disk memory is pointed to by
+           the fx_media_driver_info pointer, which is supplied by the application in the
+           call to fx_media_open.  */
+        source_buffer = static_cast<ThreadX::Uchar *>(ramMedia.driverInfo()) +
+                        (ramMedia.driverLogicalSector() * std::to_underlying(ramMedia.sectorSize()));
+
+        /* Copy the RAM sector into the destination.  */
+        ThreadX::Native::_fx_utility_memory_copy(source_buffer, ramMedia.driverBuffer(),
+                                                 ramMedia.driverSectors() * std::to_underlying(ramMedia.sectorSize()));
+
+        return;
+
+    case FileX::MediaDriverRequest::write:
+        /* Calculate the RAM disk sector offset. Note the RAM disk memory is pointed to by
+           the fx_media_driver_info pointer, which is supplied by the application in the
+           call to fx_media_open.  */
+        destination_buffer = static_cast<ThreadX::Uchar *>(ramMedia.driverInfo()) +
+                             (ramMedia.driverLogicalSector() * std::to_underlying(ramMedia.sectorSize()));
+
+        /* Copy the source to the RAM sector.  */
+        ThreadX::Native::_fx_utility_memory_copy(ramMedia.driverBuffer(), destination_buffer,
+                                                 ramMedia.driverSectors() * std::to_underlying(ramMedia.sectorSize()));
+
+        return;
+
+    case FileX::MediaDriverRequest::bootRead:
+        /* Read the boot record and return to the caller.  */
+
+        /* Calculate the RAM disk boot sector offset, which is at the very beginning of
+           the RAM disk. Note the RAM disk memory is pointed to by the
+           fx_media_driver_info pointer, which is supplied by the application in the
+           call to fx_media_open.  */
+        source_buffer = static_cast<ThreadX::Uchar *>(ramMedia.driverInfo());
+
+        /* For RAM driver, determine if the boot record is valid.  */
+        if ((source_buffer[0] != 0xEB) or ((source_buffer[1] != 0x34) and (source_buffer[1] != 0x76)) or
+            (source_buffer[2] != 0x90))
+        {
+
+            /* Invalid boot record, return an error!  */
+            ramMedia.driverStatus(FileX::Error::mediaInvalid);
+            return;
+        }
+
+        /* For RAM disk only, pickup the bytes per sector.  */
+        bytes_per_sector = ThreadX::Native::_fx_utility_16_unsigned_read(&source_buffer[FX_BYTES_SECTOR]);
+
+        /* Ensure this is less than the media memory size.  */
+        if (bytes_per_sector > std::to_underlying(ramMedia.sectorSize())) //fx_media_memory_size
+        {
+            ramMedia.driverStatus(FileX::Error::bufferError);
+            break;
+        }
+
+        /* Copy the RAM boot sector into the destination.  */
+        ThreadX::Native::_fx_utility_memory_copy(source_buffer, ramMedia.driverBuffer(), bytes_per_sector);
+
+        return;
+
+    case FileX::MediaDriverRequest::bootWrite:
+        /* Write the boot record and return to the caller.  */
+
+        /* Calculate the RAM disk boot sector offset, which is at the very beginning of the
+           RAM disk. Note the RAM disk memory is pointed to by the fx_media_driver_info
+           pointer, which is supplied by the application in the call to fx_media_open.  */
+        destination_buffer = static_cast<ThreadX::Uchar *>(ramMedia.driverInfo());
+
+        /* Copy the RAM boot sector into the destination.  */
+        ThreadX::Native::_fx_utility_memory_copy(
+            ramMedia.driverBuffer(), destination_buffer, std::to_underlying(ramMedia.sectorSize()));
+
+        return;
+
+    case FileX::MediaDriverRequest::flush:
+    case FileX::MediaDriverRequest::abort:
+    case FileX::MediaDriverRequest::init:
+    case FileX::MediaDriverRequest::uninit: /* There is nothing to do in this case for the RAM driver.  For actual
+           devices some shutdown processing may be necessary.  */
+
+        /* FLASH drivers are responsible for setting several fields in the
+           media structure, as follows:
+
+                media_ptr -> fx_media_driver_free_sector_update
+                media_ptr -> fx_media_driver_write_protect
+
+           The fx_media_driver_free_sector_update flag is used to instruct
+           FileX to inform the driver whenever sectors are not being used.
+           This is especially useful for FLASH managers so they don't have
+           maintain mapping for sectors no longer in use.
+
+           The fx_media_driver_write_protect flag can be set anytime by the
+           driver to indicate the media is not writable.  Write attempts made
+           when this flag is set are returned as errors.  */
+
+        /* Perform basic initialization here... since the boot record is going
+           to be read subsequently and again for volume name requests.  */
+        return;
+
+    case FileX::MediaDriverRequest::releaseSectors:
+    default:
+        /* Invalid driver request.  */
+        ramMedia.driverStatus(FileX::Error::ioError);
+        return;
+    }
+}
+
+void norFlashSimulatorMediaDriver(NorMedia &norMedia)
+{
+    ThreadX::Uchar *source_buffer;
+    ThreadX::Uchar *destination_buffer;
+    ThreadX::Ulong logical_sector;
+
+    norMedia.driverStatus(FileX::Error::success);
+
+    /* Process the driver request specified in the media control block.  */
+    switch (norMedia.driverRequest())
+    {
+    case FileX::MediaDriverRequest::read:
 
         /* Setup the destination buffer and logical sector.  */
-        logical_sector = norMedia.fx_media_driver_logical_sector;
-        destination_buffer = norMedia.fx_media_driver_buffer;
+        logical_sector = norMedia.driverLogicalSector();
+        destination_buffer = norMedia.driverBuffer();
 
         /* Loop to read sectors from flash.  */
-        for (ThreadX::Ulong i{}; i < norMedia.fx_media_driver_sectors; i++)
+        for (ThreadX::Ulong i{}; i < norMedia.driverSectors(); i++)
         {
 
             /* Read a sector from NOR flash.  */
             if (norMedia.m_norFlash.readSector(logical_sector, destination_buffer) != LevelX::Error::success)
             {
-                norMedia.fx_media_driver_status = FX_IO_ERROR;
+                norMedia.driverStatus(FileX::Error::ioError);
                 return;
             }
 
             /* Move to the next entries.  */
             ++logical_sector;
-            destination_buffer += norMedia.fx_media_bytes_per_sector;
+            destination_buffer += std::to_underlying(norMedia.sectorSize());
         }
 
         return;
 
-    case FX_DRIVER_WRITE:
+    case FileX::MediaDriverRequest::write:
         /* Setup the source buffer and logical sector.  */
-        logical_sector = norMedia.fx_media_driver_logical_sector;
-        source_buffer = norMedia.fx_media_driver_buffer;
+        logical_sector = norMedia.driverLogicalSector();
+        source_buffer = norMedia.driverBuffer();
 
         /* Loop to write sectors to flash.  */
-        for (ThreadX::Ulong i{}; i < norMedia.fx_media_driver_sectors; i++)
+        for (ThreadX::Ulong i{}; i < norMedia.driverSectors(); i++)
         {
 
             /* Write a sector to NOR flash.  */
             if (norMedia.m_norFlash.writeSector(logical_sector, source_buffer) != LevelX::Error::success)
             {
-                norMedia.fx_media_driver_status = FX_IO_ERROR;
+                norMedia.driverStatus(FileX::Error::ioError);
                 return;
             }
 
             /* Move to the next entries.  */
             logical_sector++;
-            source_buffer = source_buffer + norMedia.fx_media_bytes_per_sector;
+            source_buffer = source_buffer + std::to_underlying(norMedia.sectorSize());
         }
 
         return;
 
-    case FX_DRIVER_RELEASE_SECTORS:
+    case FileX::MediaDriverRequest::releaseSectors:
 
         /* Setup the logical sector.  */
-        logical_sector = norMedia.fx_media_driver_logical_sector;
+        logical_sector = norMedia.driverLogicalSector();
 
         /* Release sectors.  */
-        for (ThreadX::Ulong i{}; i < norMedia.fx_media_driver_sectors; i++)
+        for (ThreadX::Ulong i{}; i < norMedia.driverSectors(); i++)
         {
 
             /* Release NOR flash sector.  */
             if (norMedia.m_norFlash.releaseSector(logical_sector) != LevelX::Error::success)
             {
-                norMedia.fx_media_driver_status = FX_IO_ERROR;
+                norMedia.driverStatus(FileX::Error::ioError);
                 return;
             }
 
@@ -153,100 +281,85 @@ void norFlashSimulatorMediaDriver(NorMedia &norMedia)
 
         return;
 
-    case FX_DRIVER_INIT:
-        /* FLASH drivers are responsible for setting several fields in the 
-               media structure, as follows:
-
-                    media -> fx_media_driver_free_sector_update
-                    media -> fx_media_driver_write_protect
-
-               The fx_media_driver_free_sector_update flag is used to instruct
-               FileX to inform the driver whenever sectors are not being used.
-               This is especially useful for FLASH managers so they don't have 
-               maintain mapping for sectors no longer in use.
-
-               The fx_media_driver_write_protect flag can be set anytime by the
-               driver to indicate the media is not writable.  Write attempts made
-               when this flag is set are returned as errors.  */
-
+    case FileX::MediaDriverRequest::init:
         /* Perform basic initialization here... since the boot record is going
                to be read subsequently and again for volume name requests.  */
 
         /* With flash wear leveling, FileX should tell wear leveling when sectors
                are no longer in use.  */
-        norMedia.fx_media_driver_free_sector_update = FX_TRUE;
+        norMedia.driverFreeSectorUpdate();
 
         /* Open the NOR flash simulation.  */
         if (norMedia.m_norFlash.open() != LevelX::Error::success)
         {
-            norMedia.fx_media_driver_status = FX_IO_ERROR;
+            norMedia.driverStatus(FileX::Error::ioError);
         }
 
         return;
 
-    case FX_DRIVER_UNINIT:
+    case FileX::MediaDriverRequest::uninit:
         /* There is nothing to do in this case for the RAM driver.  For actual
                devices some shutdown processing may be necessary.  */
 
         /* Close the NOR flash simulation.  */
         if (norMedia.m_norFlash.close() != LevelX::Error::success)
         {
-            norMedia.fx_media_driver_status = FX_IO_ERROR;
+            norMedia.driverStatus(FileX::Error::ioError);
         }
 
         return;
 
-    case FX_DRIVER_BOOT_READ:
+    case FileX::MediaDriverRequest::bootRead:
         /* Read the boot record and return to the caller.  */
 
         /* Setup the destination buffer.  */
-        destination_buffer = norMedia.fx_media_driver_buffer;
+        destination_buffer = norMedia.driverBuffer();
 
         /* Read boot sector from NOR flash.  */
         if (norMedia.m_norFlash.readSector(0, destination_buffer) != LevelX::Error::success)
         {
-            norMedia.fx_media_driver_status = FX_IO_ERROR;
+            norMedia.driverStatus(FileX::Error::ioError);
             return;
         }
 
         /* For NOR driver, determine if the boot record is valid.  */
-        if (destination_buffer[0] != 0xEB || destination_buffer[1] != 0x34 || destination_buffer[2] != 0x90)
+        if (destination_buffer[0] != 0xEB or destination_buffer[1] != 0x34 or destination_buffer[2] != 0x90)
         {
             /* Invalid boot record, return an error!  */
-            norMedia.fx_media_driver_status = FX_MEDIA_INVALID;
+            norMedia.driverStatus(FileX::Error::mediaInvalid);
         }
 
         return;
 
-    case FX_DRIVER_BOOT_WRITE:
+    case FileX::MediaDriverRequest::bootWrite:
         /* Make sure the media bytes per sector equals to the LevelX logical sector size.  */
-        if (norMedia.fx_media_bytes_per_sector != LevelX::norSectorSizeInWord * ThreadX::wordSize)
+        if (norMedia.sectorSize() != norMedia.m_norFlash.sectorSize())
         {
             /* Sector size mismatch, return error.  */
-            norMedia.fx_media_driver_status = FX_IO_ERROR;
+            norMedia.driverStatus(FileX::Error::ioError);
             return;
         }
 
         /* Write the boot record and return to the caller.  */
 
         /* Setup the source buffer.  */
-        source_buffer = norMedia.fx_media_driver_buffer;
+        source_buffer = norMedia.driverBuffer();
 
         /* Write boot sector to NOR flash.  */
         if (norMedia.m_norFlash.writeSector(0, source_buffer) != LevelX::Error::success)
         {
-            norMedia.fx_media_driver_status = FX_IO_ERROR;
+            norMedia.driverStatus(FileX::Error::ioError);
         }
 
         return;
 
-    case FX_DRIVER_FLUSH:
-    case FX_DRIVER_ABORT:
+    case FileX::MediaDriverRequest::flush:
+    case FileX::MediaDriverRequest::abort:
         return;
 
     default:
         /* Invalid driver request.  */
-        norMedia.fx_media_driver_status = FX_IO_ERROR;
+        norMedia.driverStatus(FileX::Error::ioError);
         return;
     }
 }
@@ -284,7 +397,7 @@ LevelX::Error norFlashSimulatorBlockErase(ThreadX::Ulong block, [[maybe_unused]]
     pointer = reinterpret_cast<ThreadX::Ulong *>(&norMem[block]);
 
     /* Loop to erase block.  */
-    words = sizeof(FlashBlock) / sizeof(ThreadX::Ulong);
+    words = sizeof(NorFlash::Block) / sizeof(ThreadX::Ulong);
     while (words--)
     {
 
@@ -325,7 +438,7 @@ LevelX::Error norFlashSimulatorBlockErasedVerify(ThreadX::Ulong block)
     word_ptr = &norMem[block].eraseCount;
 
     /* Calculate the number of words in a block.  */
-    words = sizeof(FlashBlock) / sizeof(ThreadX::Ulong);
+    words = sizeof(NorFlash::Block) / sizeof(ThreadX::Ulong);
 
     /* Loop to check if the block is erased.  */
     while (words--)

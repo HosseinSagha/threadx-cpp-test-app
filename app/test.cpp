@@ -1,6 +1,7 @@
 #include "test.hpp"
 #include "eventFlags.hpp"
 #include "file.hpp"
+#include "flashSimulator.hpp"
 #include "mutex.hpp"
 #include "norFlash.hpp"
 #include "rttLogger.hpp"
@@ -9,6 +10,18 @@
 #include "trace.hpp"
 
 using namespace std::chrono_literals;
+
+#if 0
+extern ThreadX::Native::LX_NAND_FLASH nand_flash;
+extern ThreadX::Native::ULONG lx_memory_buffer[8224 / sizeof(ThreadX::Native::ULONG)];
+
+namespace ThreadX::Native
+{
+extern "C" void _lx_nand_flash_simulator_erase_all();
+extern "C" void _fx_nand_flash_simulator_driver(FX_MEDIA *media_ptr);
+extern "C" UINT _lx_nand_flash_simulator_initialize(LX_NAND_FLASH *nand_flash);
+} // namespace ThreadX::Native
+#endif
 
 enum class Error : size_t
 {
@@ -42,6 +55,9 @@ class Device
     Thread9 m_thread9;
     ThreadRamFileSystem m_threadRamFileSystem;
     ThreadNorFileSystem m_threadNorFileSystem;
+#if 0
+    ThreadNandFileSystem m_threadNandFileSystem;
+#endif
     ThreadX::Mutex m_mutex;
     ThreadX::BinarySemaphore m_semaphore;
     ThreadX::EventFlags m_eventFlags;
@@ -93,8 +109,11 @@ Device::Device()
       m_thread8("thread 8", m_memoryPool, thread8StackSize, PrintName()),
       m_thread9("thread 9", m_memoryPool, thread9StackSize),
       m_threadRamFileSystem("thread ram FS", m_memoryPool, threadRamFileSystemStackSize, PrintName(), ramMem),
-      m_threadNorFileSystem("thread nor FS", m_memoryPool, threadNorFileSystemStackSize, PrintName()), m_mutex(),
-      m_semaphore("semaphore 1", 1), m_eventFlags("event flags 1"),
+      m_threadNorFileSystem("thread nor FS", m_memoryPool, threadNorFileSystemStackSize, PrintName()),
+#if 0
+      m_threadNandFileSystem("thread nand FS", m_memoryPool, threadNandFileSystemStackSize, PrintName()),
+#endif
+      m_mutex(), m_semaphore("semaphore 1", 1), m_eventFlags("event flags 1"),
       m_queue("queue 1", m_memoryPool, queueSize, std::bind_front(&Thread2::queueCallback, &m_thread2))
 {
 }
@@ -373,7 +392,7 @@ RamMedia::RamMedia(std::byte *driverInfoPtr) : Media(driverInfoPtr)
 
 void RamMedia::driverCallback()
 {
-    ramDriver(*this);
+    ramMediaDriver(*this);
 }
 
 ThreadRamFileSystem::ThreadRamFileSystem(
@@ -472,7 +491,7 @@ LevelX::Error NorFlashDriver::readCallback(
 }
 
 LevelX::Error NorFlashDriver::writeCallback(
-    ThreadX::Ulong *flashAddress, ThreadX::Ulong *source, const ThreadX::Ulong words)
+    ThreadX::Ulong *flashAddress, const ThreadX::Ulong *source, const ThreadX::Ulong words)
 {
     return norFlashSimulatorWrite(flashAddress, source, words);
 }
@@ -564,3 +583,328 @@ void ThreadNorFileSystem::entryCallback()
 
     LOG_ERR("%s error 0x%X!", name().data(), error);
 }
+
+#if 0
+NandMedia::NandMedia(NandFlashDriver &nandFlash) : m_nandFlash{nandFlash}
+{
+}
+
+void NandMedia::driverCallback()
+{
+    nandFlashSimulatorMediaDriver(*this);
+}
+
+LevelX::Error NandFlashDriver::readCallback(
+    ThreadX::Ulong block, ThreadX::Ulong page, ThreadX::Ulong *destination, ThreadX::Ulong words)
+{
+    return nandFlashSimulatorRead(this, block, page, destination, words);
+}
+
+LevelX::Error NandFlashDriver::writeCallback(
+    ThreadX::Ulong block, ThreadX::Ulong page, ThreadX::Ulong *source, ThreadX::Ulong words)
+{
+    return nandFlashSimulatorWrite(this, block, page, source, words);
+}
+
+LevelX::Error NandFlashDriver::readPagesCallback(ThreadX::Ulong block, ThreadX::Ulong page, ThreadX::Uchar *mainBuffer,
+                                                 ThreadX::Uchar *spareBuffer, ThreadX::Ulong pages)
+{
+    return nandFlashSimulatorPagesRead(this, block, page, mainBuffer, spareBuffer, pages);
+}
+
+LevelX::Error NandFlashDriver::writePagesCallback(ThreadX::Ulong block, ThreadX::Ulong page, ThreadX::Uchar *mainBuffer,
+                                                  ThreadX::Uchar *spareBuffer, ThreadX::Ulong pages)
+{
+    return nandFlashSimulatorPagesWrite(this, block, page, mainBuffer, spareBuffer, pages);
+}
+
+LevelX::Error NandFlashDriver::copyPagesCallback(
+    ThreadX::Ulong sourceBlock, ThreadX::Ulong sourcePage, ThreadX::Ulong destinationBlock,
+    ThreadX::Ulong destinationPage, ThreadX::Ulong pages, ThreadX::Uchar *dataBuffer)
+{
+    return nandFlashSimulatorPagesCopy(
+        this, sourceBlock, sourcePage, destinationBlock, destinationPage, pages, dataBuffer);
+}
+
+LevelX::Error NandFlashDriver::eraseBlockCallback(ThreadX::Ulong block, ThreadX::Ulong eraseCount)
+{
+    return nandFlashSimulatorBlockErase(block, eraseCount);
+}
+
+LevelX::Error NandFlashDriver::verifyErasedBlockCallback(ThreadX::Ulong block)
+{
+    return nandFlashSimulatorBlockErasedVerify(block);
+}
+
+LevelX::Error NandFlashDriver::verifyErasedPageCallback(ThreadX::Ulong block, ThreadX::Ulong page)
+{
+    return nandFlashSimulatorPageErasedVerify(block, page);
+}
+
+LevelX::Error NandFlashDriver::getBlockStatusCallback(ThreadX::Ulong block, ThreadX::Uchar *badBlockFlag)
+{
+    return nandFlashSimulatorBlockStatusGet(block, badBlockFlag);
+}
+
+LevelX::Error NandFlashDriver::setBlockStatusCallback(ThreadX::Ulong block, ThreadX::Uchar badBlockFlag)
+{
+    return nandFlashSimulatorBlockStatusSet(block, badBlockFlag);
+}
+
+LevelX::Error NandFlashDriver::getExtraBytesCallback(
+    ThreadX::Ulong block, ThreadX::Ulong page, ThreadX::Uchar *destination, ThreadX::Uint size)
+{
+    return nandFlashSimulatorExtraBytesGet(block, page, destination, size);
+}
+
+LevelX::Error NandFlashDriver::setExtraBytesCallback(
+    ThreadX::Ulong block, ThreadX::Ulong page, ThreadX::Uchar *source, ThreadX::Uint size)
+{
+    return nandFlashSimulatorExtraBytesSet(block, page, source, size);
+}
+
+ThreadNandFileSystem::ThreadNandFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
+                                           const Thread::NotifyCallback &notifyCallback)
+    : Thread(name, pool, stackSize, notifyCallback), m_nandFlash(LevelX::NandSpareDataInfo{4, 4, 2, 2}),
+      m_media{m_nandFlash}
+{
+}
+
+ThreadX::Native::FX_MEDIA nand_disk;
+ThreadX::Native::FX_FILE my_file;
+ThreadX::Native::FX_FILE my_file1;
+unsigned char media_memory[4096];
+
+void ThreadNandFileSystem::entryCallback()
+{
+#if 1
+    FileX::Error error{m_media.open("nand media")};
+
+    do
+    {
+        if (error != FileX::Error::success)
+        {
+            nandFlashSimulatorEraseAll();
+
+            if (error = m_media.format("nand disk", m_nandFlash.mediaFormatSize()); error != FileX::Error::success)
+            {
+                break;
+            }
+
+            if (error = m_media.open("nand media"); error != FileX::Error::success)
+            {
+                break;
+            }
+        }
+
+        if (error = m_media.createFile("my file.txt"); error != FileX::Error::success)
+        {
+            break;
+        }
+
+        while (true)
+        {
+            FileX::File file("my file.txt", m_media, FileX::OpenOption::write);
+
+            if (error = file.seek(0); error != FileX::Error::success)
+            {
+                break;
+            }
+
+            if (error = file.write(" ABCDEFGHIJKLMNOPQRSTUVWXYZ\n"); error != FileX::Error::success)
+            {
+                break;
+            }
+
+            if (error = file.seek(0); error != FileX::Error::success)
+            {
+                break;
+            }
+
+            std::byte localBuffer[28];
+            ThreadX::Uint actual;
+            if (std::tie(error, actual) = file.read(localBuffer); error != FileX::Error::success)
+            {
+                break;
+            }
+
+            if (actual != 28)
+            {
+                LOG_ERR("Error reading file (%s).", name().data());
+                return;
+            }
+            else
+            {
+                LOG_INFO("Success reading file (%s).", name().data());
+            }
+
+            LOG_INFO("%s max stack used: %u%%", name().data(), stackInfo().maxUsedPercent);
+
+            ThreadX::ThisThread::sleepFor(1s);
+        };
+    } while (0);
+
+    LOG_ERR("%s error 0x%X!", name().data(), error);
+#endif
+#if 0
+    ThreadX::Native::UINT status;
+    ThreadX::Native::ULONG actual;
+    ThreadX::Native::CHAR local_buffer[30];
+
+    /* Erase the simulated NAND flash.  */
+    ThreadX::Native::_lx_nand_flash_simulator_erase_all();
+
+    /* Format the NAND disk - the memory for the NAND flash disk is setup in 
+       the NAND simulator. Note that for best performance, the format of the
+       NAND flash should be less than one full NAND flash block of sectors.  */
+    ThreadX::Native::fx_media_format(
+        &nand_disk,
+        ThreadX::Native::_fx_nand_flash_simulator_driver, // Driver entry
+        nullptr,                                          // Unused
+        media_memory,                                     // Media buffer pointer
+        sizeof(media_memory),                             // Media buffer size
+        const_cast<char *>("MY_NAND_DISK"),               // Volume Name
+        1,                                                // Number of FATs
+        32,                                               // Directory Entries
+        0,                                                // Hidden sectors
+        15,                                               // Total sectors
+        2048,                                             // Sector size
+        1,                                                // Sectors per cluster
+        1,                                                // Heads
+        1);                                               // Sectors per track
+    ThreadX::Native::_lx_nand_flash_format(
+        &nand_flash, const_cast<char *>("asd"), ThreadX::Native::_lx_nand_flash_simulator_initialize, lx_memory_buffer,
+        sizeof(lx_memory_buffer));
+    /* Loop to repeat the demo over and over!  */
+    do
+    {
+
+        /* Open the NAND disk.  */
+        status = ThreadX::Native::_fxe_media_open(
+            std::addressof(nand_disk), const_cast<char *>("NAND DISK"),
+            ThreadX::Native::_fx_nand_flash_simulator_driver, nullptr, media_memory, sizeof(media_memory),
+            sizeof(ThreadX::Native::FX_MEDIA));
+
+        /* Check the media open status.  */
+        if (status != FX_SUCCESS)
+        {
+
+            /* Error, break the loop!  */
+            break;
+        }
+
+        /* Create a file called TEST.TXT in the root directory.  */
+        status = ThreadX::Native::fx_file_create(&nand_disk, const_cast<char *>("TEST.TXT"));
+
+        /* Check the create status.  */
+        if (status != FX_SUCCESS)
+        {
+
+            /* Check for an already created status. This is expected on the
+               second pass of this loop!  */
+            if (status != FX_ALREADY_CREATED)
+            {
+
+                /* Create error, break the loop.  */
+                break;
+            }
+        }
+
+        /* Open the test file.  */
+        status = ThreadX::Native::_fxe_file_open(
+            &nand_disk, &my_file, const_cast<char *>("TEST.TXT"), FX_OPEN_FOR_WRITE, sizeof(ThreadX::Native::FX_FILE));
+
+        /* Check the file open status.  */
+        if (status != FX_SUCCESS)
+        {
+
+            /* Error opening file, break the loop.  */
+            break;
+        }
+
+        /* Seek to the beginning of the test file.  */
+        status = ThreadX::Native::fx_file_seek(&my_file, 0);
+
+        /* Check the file seek status.  */
+        if (status != FX_SUCCESS)
+        {
+
+            /* Error performing file seek, break the loop.  */
+            break;
+        }
+
+        /* Write a string to the test file.  */
+        status = ThreadX::Native::fx_file_write(&my_file, const_cast<char *>(" ABCDEFGHIJKLMNOPQRSTUVWXYZ\n"), 28);
+
+        /* Check the file write status.  */
+        if (status != FX_SUCCESS)
+        {
+
+            /* Error writing to a file, break the loop.  */
+            break;
+        }
+
+        /* Seek to the beginning of the test file.  */
+        status = ThreadX::Native::fx_file_seek(&my_file, 0);
+
+        /* Check the file seek status.  */
+        if (status != FX_SUCCESS)
+        {
+
+            /* Error performing file seek, break the loop.  */
+            break;
+        }
+
+        /* Read the first 28 bytes of the test file.  */
+        status = ThreadX::Native::fx_file_read(&my_file, local_buffer, 28, &actual);
+
+        /* Check the file read status.  */
+        if ((status != FX_SUCCESS) || (actual != 28))
+        {
+
+            /* Error reading file, break the loop.  */
+            break;
+        }
+
+        /* Close the test file.  */
+        status = ThreadX::Native::fx_file_close(&my_file);
+
+        /* Check the file close status.  */
+        if (status != FX_SUCCESS)
+        {
+
+            /* Error closing the file, break the loop.  */
+            break;
+        }
+
+        /* Delete the file.  */
+        status = ThreadX::Native::fx_file_delete(&nand_disk, const_cast<char *>("TEST.TXT"));
+
+        /* Check the file delete status.  */
+        if (status != FX_SUCCESS)
+        {
+
+            /* Error deleting the file, break the loop.  */
+            break;
+        }
+
+        /* Close the media.  */
+        status = ThreadX::Native::fx_media_close(&nand_disk);
+
+        /* Check the media close status.  */
+        if (status != FX_SUCCESS)
+        {
+
+            /* Error closing the media, break the loop.  */
+            break;
+        }
+
+        /* Increment the thread counter, which represents the number
+           of successful passes through this loop.  */
+    } while (1);
+
+    /* If we get here the FileX test failed!  */
+    return;
+#endif
+}
+#endif

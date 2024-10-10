@@ -15,7 +15,7 @@ set(THREADX_VER v6.4.1_rel)
 find_package(Git REQUIRED)
 Include(FetchContent)
 
-set(GITHUB_SUBDIR https://github.com/HosseinSagha)
+set(GITHUB_SUBDIR ../)
 FetchContent_Declare(toolchain-gnu
                      GIT_REPOSITORY ${GITHUB_SUBDIR}/toolchain-gnu.git
                      GIT_TAG origin/main

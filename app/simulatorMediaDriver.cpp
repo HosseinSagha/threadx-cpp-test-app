@@ -1,8 +1,7 @@
 #include "simulatorMediaDriver.hpp"
 #include "test.hpp"
 
-std::byte ramMem[20 * 512];
-NorFlash::Block norMem[norBlocks];
+std::byte ramMem[10 * 512];
 
 /* There are several useful/important pieces of information contained in
        the media structure, some of which are supplied by FileX and others
@@ -83,7 +82,7 @@ NorFlash::Block norMem[norBlocks];
                                                     FX_DATA_SECTOR
      */
 
-void ramDriver(RamMedia &ramMedia)
+void ramMediaDriver(RamMedia &ramMedia)
 {
     ThreadX::Uchar *source_buffer;
     ThreadX::Uchar *destination_buffer;
@@ -222,8 +221,15 @@ void norFlashSimulatorMediaDriver(NorMedia &norMedia)
         for (ThreadX::Ulong i{}; i < norMedia.driverSectors(); i++)
         {
 
-            /* Read a sector from NOR flash.  */
-            if (norMedia.m_norFlash.readSector(logical_sector, destination_buffer) != LevelX::Error::success)
+/* Read a sector from NOR flash.  */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-align"
+            if (norMedia.m_norFlash.readSector(
+                    logical_sector,
+                    std::span<ThreadX::Ulong, std::to_underlying(norMedia.sectorSize()) / ThreadX::wordSize>(
+                        reinterpret_cast<ThreadX::Ulong *>(destination_buffer),
+                        std::to_underlying(norMedia.sectorSize()) / ThreadX::wordSize)) != LevelX::Error::success)
+#pragma GCC diagnostic pop
             {
                 norMedia.driverStatus(FileX::Error::ioError);
                 return;
@@ -245,8 +251,15 @@ void norFlashSimulatorMediaDriver(NorMedia &norMedia)
         for (ThreadX::Ulong i{}; i < norMedia.driverSectors(); i++)
         {
 
-            /* Write a sector to NOR flash.  */
-            if (norMedia.m_norFlash.writeSector(logical_sector, source_buffer) != LevelX::Error::success)
+/* Write a sector to NOR flash.  */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-align" // driverBuffer() is always word aligned by media class design
+            if (norMedia.m_norFlash.writeSector(
+                    logical_sector,
+                    std::span<ThreadX::Ulong, std::to_underlying(norMedia.sectorSize()) / ThreadX::wordSize>(
+                        reinterpret_cast<ThreadX::Ulong *>(source_buffer),
+                        std::to_underlying(norMedia.sectorSize()) / ThreadX::wordSize)) != LevelX::Error::success)
+#pragma GCC diagnostic pop
             {
                 norMedia.driverStatus(FileX::Error::ioError);
                 return;
@@ -315,8 +328,15 @@ void norFlashSimulatorMediaDriver(NorMedia &norMedia)
         /* Setup the destination buffer.  */
         destination_buffer = norMedia.driverBuffer();
 
-        /* Read boot sector from NOR flash.  */
-        if (norMedia.m_norFlash.readSector(0, destination_buffer) != LevelX::Error::success)
+/* Read boot sector from NOR flash.  */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-align"
+        if (norMedia.m_norFlash.readSector(
+                LevelX::norBootSector,
+                std::span<ThreadX::Ulong, std::to_underlying(norMedia.sectorSize()) / ThreadX::wordSize>(
+                    reinterpret_cast<ThreadX::Ulong *>(destination_buffer),
+                    std::to_underlying(norMedia.sectorSize()) / ThreadX::wordSize)) != LevelX::Error::success)
+#pragma GCC diagnostic pop
         {
             norMedia.driverStatus(FileX::Error::ioError);
             return;
@@ -345,8 +365,15 @@ void norFlashSimulatorMediaDriver(NorMedia &norMedia)
         /* Setup the source buffer.  */
         source_buffer = norMedia.driverBuffer();
 
-        /* Write boot sector to NOR flash.  */
-        if (norMedia.m_norFlash.writeSector(0, source_buffer) != LevelX::Error::success)
+/* Write boot sector to NOR flash.  */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-align"
+        if (norMedia.m_norFlash.writeSector(
+                LevelX::norBootSector,
+                std::span<ThreadX::Ulong, std::to_underlying(norMedia.sectorSize()) / ThreadX::wordSize>{
+                    reinterpret_cast<ThreadX::Ulong *>(source_buffer), LevelX::norSectorSizeInWord}) !=
+            LevelX::Error::success)
+#pragma GCC diagnostic pop
         {
             norMedia.driverStatus(FileX::Error::ioError);
         }
@@ -364,91 +391,154 @@ void norFlashSimulatorMediaDriver(NorMedia &norMedia)
     }
 }
 
-LevelX::Error norFlashSimulatorRead(ThreadX::Ulong *flash_address, ThreadX::Ulong *destination, ThreadX::Ulong words)
+#if 0
+void nandFlashSimulatorMediaDriver(NandMedia &nandMedia)
 {
-    /* Loop to read flash.  */
-    while (words--)
+    ThreadX::Ulong logical_sector;
+    ThreadX::Ulong count;
+    ThreadX::Uchar *buffer;
+
+    nandMedia.driverStatus(FileX::Error::success);
+
+    /* Process the driver request specified in the media control block.  */
+    switch (nandMedia.driverRequest())
     {
-        /* Copy word.  */
-        *destination++ = *flash_address++;
+    case FileX::MediaDriverRequest::read:
+        /* Read sector(s) from NAND flash.  */
+        logical_sector = nandMedia.driverLogicalSector();
+        count = nandMedia.driverSectors();
+        buffer = nandMedia.driverBuffer();
+
+/* Call LevelX to read one flash sector.  */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-align"
+        if (nandMedia.m_nandFlash.readSectors(
+                logical_sector, {reinterpret_cast<ThreadX::Ulong *>(buffer),
+                                 count * std::to_underlying(nandMedia.sectorSize()) / ThreadX::wordSize}) !=
+            LevelX::Error::success)
+#pragma GCC diagnostic pop
+        {
+            /* Return an I/O error to FileX.  */
+            nandMedia.driverStatus(FileX::Error::ioError);
+            return;
+        }
+
+        return;
+
+    case FileX::MediaDriverRequest::write:
+        /* Write sector(s) to NAND flash.  */
+        logical_sector = nandMedia.driverLogicalSector();
+        count = nandMedia.driverSectors();
+        buffer = nandMedia.driverBuffer();
+
+        /* Call LevelX to write a sector.  */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-align"
+        if (nandMedia.m_nandFlash.writeSectors(
+                logical_sector, {reinterpret_cast<ThreadX::Ulong *>(buffer),
+                                 count * std::to_underlying(nandMedia.sectorSize()) / ThreadX::wordSize}) !=
+            LevelX::Error::success)
+#pragma GCC diagnostic pop
+        {
+            /* Return an I/O error to FileX.  */
+            nandMedia.driverStatus(FileX::Error::ioError);
+            return;
+        }
+
+        return;
+
+    case FileX::MediaDriverRequest::releaseSectors:
+        /* Release the mapping of this sector.  */
+        logical_sector = nandMedia.driverLogicalSector();
+        count = nandMedia.driverSectors();
+        while (count)
+        {
+            /* Call LevelX to release a sector mapping.  */
+            if (nandMedia.m_nandFlash.releaseSectors(logical_sector) != LevelX::Error::success)
+            {
+                /* Return an I/O error to FileX.  */
+                nandMedia.driverStatus(FileX::Error::ioError);
+                return;
+            }
+
+            /* Successful sector release.  */
+            count--;
+            logical_sector++;
+        }
+
+        return;
+
+    case FileX::MediaDriverRequest::init:
+        /* With flash wear leveling, FileX should tell wear leveling when sectors
+               are no longer in use.  */
+        nandMedia.driverFreeSectorUpdate();
+
+        /* Open the NAND flash simulation.  */
+        if (nandMedia.m_nandFlash.open() != LevelX::Error::success)
+        {
+            /* Return an I/O error to FileX.  */
+            nandMedia.driverStatus(FileX::Error::ioError);
+            return;
+        }
+
+        return;
+
+    case FileX::MediaDriverRequest::uninit:
+        /* There is nothing to do in this case for the RAM driver.  For actual
+               devices some shutdown processing may be necessary.  */
+
+        /* Close the NAND flash simulation.  */
+        if (nandMedia.m_nandFlash.close() != LevelX::Error::success)
+        {
+            /* Return an I/O error to FileX.  */
+            nandMedia.driverStatus(FileX::Error::ioError);
+            return;
+        }
+
+        return;
+
+    case FileX::MediaDriverRequest::bootRead:
+/* Read the boot record and return to the caller.  */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-align"
+        if (nandMedia.m_nandFlash.readSectors(
+                LevelX::nandBootSector,
+                {reinterpret_cast<ThreadX::Ulong *>(nandMedia.driverBuffer()),
+                 std::to_underlying(nandMedia.sectorSize()) / ThreadX::wordSize}) != LevelX::Error::success)
+#pragma GCC diagnostic pop
+        {
+            /* Return an I/O error to FileX.  */
+            nandMedia.driverStatus(FileX::Error::ioError);
+            return;
+        }
+
+        return;
+
+    case FileX::MediaDriverRequest::bootWrite:
+/* Write the boot record and return to the caller.  */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-align"
+        if (nandMedia.m_nandFlash.writeSectors(
+                LevelX::nandBootSector,
+                {reinterpret_cast<ThreadX::Ulong *>(nandMedia.driverBuffer()),
+                 std::to_underlying(nandMedia.sectorSize()) / ThreadX::wordSize}) != LevelX::Error::success)
+#pragma GCC diagnostic pop
+        {
+            /* Return an I/O error to FileX.  */
+            nandMedia.driverStatus(FileX::Error::ioError);
+            return;
+        }
+
+        return;
+
+    case FileX::MediaDriverRequest::flush:
+    case FileX::MediaDriverRequest::abort:
+        return;
+
+    default:
+        /* Invalid driver request.  */
+        nandMedia.driverStatus(FileX::Error::ioError);
+        return;
     }
-
-    return LevelX::Error::success;
 }
-
-LevelX::Error norFlashSimulatorWrite(ThreadX::Ulong *flash_address, ThreadX::Ulong *source, ThreadX::Ulong words)
-{
-    /* Loop to write flash.  */
-    while (words--)
-    {
-        /* Copy word.  */
-        *flash_address++ = *source++;
-    }
-
-    return LevelX::Error::success;
-}
-
-LevelX::Error norFlashSimulatorBlockErase(ThreadX::Ulong block, [[maybe_unused]] ThreadX::Ulong erase_count)
-{
-    ThreadX::Ulong *pointer;
-    ThreadX::Ulong words;
-
-    /* Setup pointer.  */
-    pointer = reinterpret_cast<ThreadX::Ulong *>(&norMem[block]);
-
-    /* Loop to erase block.  */
-    words = sizeof(NorFlash::Block) / sizeof(ThreadX::Ulong);
-    while (words--)
-    {
-
-        /* Erase word of block.  */
-        *pointer++ = 0xFFFFFFFFUL;
-    }
-
-    return LevelX::Error::success;
-}
-
-LevelX::Error norFlashSimulatorEraseAll()
-{
-    ThreadX::Ulong *pointer;
-    ThreadX::Ulong words;
-
-    /* Setup pointer.  */
-    pointer = reinterpret_cast<ThreadX::Ulong *>(&norMem[0]);
-
-    /* Loop to erase block.  */
-    words = sizeof(norMem) / (sizeof(ThreadX::Ulong));
-    while (words--)
-    {
-        /* Erase word of block.  */
-        *pointer++ = 0xFFFFFFFFUL;
-    }
-
-    return LevelX::Error::success;
-}
-
-LevelX::Error norFlashSimulatorBlockErasedVerify(ThreadX::Ulong block)
-{
-    ThreadX::Ulong *word_ptr;
-    ThreadX::Ulong words;
-
-    /* Determine if the block is completely erased.  */
-
-    /* Pickup the pointer to the first word of the block.  */
-    word_ptr = &norMem[block].eraseCount;
-
-    /* Calculate the number of words in a block.  */
-    words = sizeof(NorFlash::Block) / sizeof(ThreadX::Ulong);
-
-    /* Loop to check if the block is erased.  */
-    while (words--)
-    {
-
-        /* Is this word erased?  */
-        if (*word_ptr++ != 0xFFFFFFFF)
-            return LevelX::Error::error;
-    }
-
-    /* Return success.  */
-    return LevelX::Error::success;
-}
+#endif

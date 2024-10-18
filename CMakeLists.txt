@@ -41,7 +41,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 add_compile_definitions(${MCU_LINE}
-                        SYSTEM_CLOCK=4000000
+                        SYSTEM_CLOCK=16000000
                         ) 
 
 #link libs and dirs
@@ -68,9 +68,10 @@ set(INC_DIRS
     )
 
 #find all source files
+configure_file(${PROJECT_SOURCE_DIR}/app/${CORE_SUBFOLDER}/Core/Src/main.c main.cpp)
 file(GLOB USER_SRCS CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/app/*.cpp)
-file(GLOB CORE_SRCS CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/app/Core/Src/*.c)
-set(CORE_SRCS ${CORE_SRCS} ${PROJECT_SOURCE_DIR}/app/Core/Src/tx_initialize_low_level.S)
+file(GLOB CORE_SRCS CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/app/Core/Src/*.* ${PROJECT_BINARY_DIR}/*.cpp ${CMAKE_SOURCE_DIR}/app/${CORE_SUBFOLDER}/Core/ThreadSafe/*.c)
+list(REMOVE_ITEM CORE_SRCS ${CMAKE_SOURCE_DIR}/app/Core/Src/main.c)
 set_source_files_properties(${CORE_SRCS} PROPERTIES COMPILE_FLAGS -w) #disable warnings for system sources
 
 #object library

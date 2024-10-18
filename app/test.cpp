@@ -78,6 +78,7 @@ static void stackErrorCallback(Thread &thread)
 void runTestCode()
 {
     RttLogger::init(RttLogger::Type::debug);
+
     Thread::registerStackErrorNotifyCallback(stackErrorCallback);
     Device::instance();
 }
@@ -298,6 +299,7 @@ void Thread5::entryCallback()
         auto [error, actual_flags] = Device::instance().m_eventFlags.waitAll(0x1);
         if (error != ThreadX::Error::success)
         {
+
             LOG_ERR("%s ThreadX error %u!", threadName, error);
             break;
         }
@@ -516,7 +518,7 @@ ThreadNorFileSystem::ThreadNorFileSystem(const std::string_view name, ThreadPool
 void ThreadNorFileSystem::entryCallback()
 {
     FileX::Error error{m_media.open("nor media")};
-
+    m_media.setFileSystemTime();
     do
     {
         if (error != FileX::Error::success)
@@ -825,7 +827,7 @@ void ThreadNandFileSystem::entryCallback()
         /* Seek to the beginning of the test file.  */
         status = ThreadX::Native::fx_file_seek(&my_file, 0);
 
-        /* Check the file seek status.  */
+
         if (status != FX_SUCCESS)
         {
 
@@ -883,7 +885,6 @@ void ThreadNandFileSystem::entryCallback()
         /* Check the file delete status.  */
         if (status != FX_SUCCESS)
         {
-
             /* Error deleting the file, break the loop.  */
             break;
         }

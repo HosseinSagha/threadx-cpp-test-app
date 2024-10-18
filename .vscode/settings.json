@@ -74,7 +74,9 @@
         "xtr1common": "cpp",
         "xutility": "cpp",
         "climits": "cpp",
-        "forward_list": "cpp"
+        "forward_list": "cpp",
+        "times.h": "c",
+        "time.h": "c"
     },
     "editor.formatOnSave": true,
     "clang-format.executable": "clang-format",

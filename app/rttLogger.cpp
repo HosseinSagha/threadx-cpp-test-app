@@ -17,8 +17,8 @@ void RttLogger::clear()
 
 void RttLogger::addTime()
 {
-    const auto [t, frac_ms]{ThreadX::TickTimer::to_time_t(ThreadX::TickTimer::now())};
-    m_message += std::to_string(t) + std::string(".") + std::to_string(frac_ms) + " ";
+    const auto time{std::chrono::system_clock::to_time_t(std::chrono::system_clock::now())};
+    m_message += std::to_string(time) + " ";
 }
 
 void RttLogger::addColourControl(const Type logType)

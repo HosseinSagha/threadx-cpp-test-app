@@ -55,6 +55,7 @@ set(LIBS
     stm32_hal_drivers
     arm_cortexM4lf_math
     threadx-cpp
+    utility
     segger-rtt
     )
     

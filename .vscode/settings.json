@@ -76,7 +76,8 @@
         "climits": "cpp",
         "forward_list": "cpp",
         "times.h": "c",
-        "time.h": "c"
+        "time.h": "c",
+        "iostream": "cpp"
     },
     "editor.formatOnSave": true,
     "clang-format.executable": "clang-format",

@@ -97,12 +97,10 @@ void ramMediaDriver(RamMedia &ramMedia)
         /* Calculate the RAM disk sector offset. Note the RAM disk memory is pointed to by
            the fx_media_driver_info pointer, which is supplied by the application in the
            call to fx_media_open.  */
-        source_buffer = static_cast<ThreadX::Uchar *>(ramMedia.driverInfo()) +
-                        (ramMedia.driverLogicalSector() * std::to_underlying(ramMedia.sectorSize()));
+        source_buffer = static_cast<ThreadX::Uchar *>(ramMedia.driverInfo()) + (ramMedia.driverLogicalSector() * std::to_underlying(ramMedia.sectorSize()));
 
         /* Copy the RAM sector into the destination.  */
-        ThreadX::Native::_fx_utility_memory_copy(source_buffer, ramMedia.driverBuffer(),
-                                                 ramMedia.driverSectors() * std::to_underlying(ramMedia.sectorSize()));
+        ThreadX::Native::_fx_utility_memory_copy(source_buffer, ramMedia.driverBuffer(), ramMedia.driverSectors() * std::to_underlying(ramMedia.sectorSize()));
 
         return;
 
@@ -110,12 +108,10 @@ void ramMediaDriver(RamMedia &ramMedia)
         /* Calculate the RAM disk sector offset. Note the RAM disk memory is pointed to by
            the fx_media_driver_info pointer, which is supplied by the application in the
            call to fx_media_open.  */
-        destination_buffer = static_cast<ThreadX::Uchar *>(ramMedia.driverInfo()) +
-                             (ramMedia.driverLogicalSector() * std::to_underlying(ramMedia.sectorSize()));
+        destination_buffer = static_cast<ThreadX::Uchar *>(ramMedia.driverInfo()) + (ramMedia.driverLogicalSector() * std::to_underlying(ramMedia.sectorSize()));
 
         /* Copy the source to the RAM sector.  */
-        ThreadX::Native::_fx_utility_memory_copy(ramMedia.driverBuffer(), destination_buffer,
-                                                 ramMedia.driverSectors() * std::to_underlying(ramMedia.sectorSize()));
+        ThreadX::Native::_fx_utility_memory_copy(ramMedia.driverBuffer(), destination_buffer, ramMedia.driverSectors() * std::to_underlying(ramMedia.sectorSize()));
 
         return;
 
@@ -129,8 +125,7 @@ void ramMediaDriver(RamMedia &ramMedia)
         source_buffer = static_cast<ThreadX::Uchar *>(ramMedia.driverInfo());
 
         /* For RAM driver, determine if the boot record is valid.  */
-        if ((source_buffer[0] != 0xEB) or ((source_buffer[1] != 0x34) and (source_buffer[1] != 0x76)) or
-            (source_buffer[2] != 0x90))
+        if ((source_buffer[0] != 0xEB) or ((source_buffer[1] != 0x34) and (source_buffer[1] != 0x76)) or (source_buffer[2] != 0x90))
         {
 
             /* Invalid boot record, return an error!  */
@@ -142,7 +137,7 @@ void ramMediaDriver(RamMedia &ramMedia)
         bytes_per_sector = ThreadX::Native::_fx_utility_16_unsigned_read(&source_buffer[FX_BYTES_SECTOR]);
 
         /* Ensure this is less than the media memory size.  */
-        if (bytes_per_sector > std::to_underlying(ramMedia.sectorSize())) //fx_media_memory_size
+        if (bytes_per_sector > std::to_underlying(ramMedia.sectorSize())) // fx_media_memory_size
         {
             ramMedia.driverStatus(FileX::Error::bufferError);
             break;
@@ -162,8 +157,7 @@ void ramMediaDriver(RamMedia &ramMedia)
         destination_buffer = static_cast<ThreadX::Uchar *>(ramMedia.driverInfo());
 
         /* Copy the RAM boot sector into the destination.  */
-        ThreadX::Native::_fx_utility_memory_copy(
-            ramMedia.driverBuffer(), destination_buffer, std::to_underlying(ramMedia.sectorSize()));
+        ThreadX::Native::_fx_utility_memory_copy(ramMedia.driverBuffer(), destination_buffer, std::to_underlying(ramMedia.sectorSize()));
 
         return;
 
@@ -224,11 +218,8 @@ void norFlashSimulatorMediaDriver(NorMedia &norMedia)
 /* Read a sector from NOR flash.  */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-align"
-            if (norMedia.m_norFlash.readSector(
-                    logical_sector,
-                    std::span<ThreadX::Ulong, std::to_underlying(norMedia.sectorSize()) / ThreadX::wordSize>(
-                        reinterpret_cast<ThreadX::Ulong *>(destination_buffer),
-                        std::to_underlying(norMedia.sectorSize()) / ThreadX::wordSize)) != LevelX::Error::success)
+            if (norMedia.m_norFlash.readSector(logical_sector, std::span<ThreadX::Ulong, std::to_underlying(norMedia.sectorSize()) / ThreadX::wordSize>(
+                                                                   reinterpret_cast<ThreadX::Ulong *>(destination_buffer), std::to_underlying(norMedia.sectorSize()) / ThreadX::wordSize)) != LevelX::Error::success)
 #pragma GCC diagnostic pop
             {
                 norMedia.driverStatus(FileX::Error::ioError);
@@ -254,11 +245,8 @@ void norFlashSimulatorMediaDriver(NorMedia &norMedia)
 /* Write a sector to NOR flash.  */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-align" // driverBuffer() is always word aligned by media class design
-            if (norMedia.m_norFlash.writeSector(
-                    logical_sector,
-                    std::span<ThreadX::Ulong, std::to_underlying(norMedia.sectorSize()) / ThreadX::wordSize>(
-                        reinterpret_cast<ThreadX::Ulong *>(source_buffer),
-                        std::to_underlying(norMedia.sectorSize()) / ThreadX::wordSize)) != LevelX::Error::success)
+            if (norMedia.m_norFlash.writeSector(logical_sector, std::span<ThreadX::Ulong, std::to_underlying(norMedia.sectorSize()) / ThreadX::wordSize>(
+                                                                    reinterpret_cast<ThreadX::Ulong *>(source_buffer), std::to_underlying(norMedia.sectorSize()) / ThreadX::wordSize)) != LevelX::Error::success)
 #pragma GCC diagnostic pop
             {
                 norMedia.driverStatus(FileX::Error::ioError);
@@ -331,11 +319,8 @@ void norFlashSimulatorMediaDriver(NorMedia &norMedia)
 /* Read boot sector from NOR flash.  */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-align"
-        if (norMedia.m_norFlash.readSector(
-                LevelX::norBootSector,
-                std::span<ThreadX::Ulong, std::to_underlying(norMedia.sectorSize()) / ThreadX::wordSize>(
-                    reinterpret_cast<ThreadX::Ulong *>(destination_buffer),
-                    std::to_underlying(norMedia.sectorSize()) / ThreadX::wordSize)) != LevelX::Error::success)
+        if (norMedia.m_norFlash.readSector(LevelX::norBootSector, std::span<ThreadX::Ulong, std::to_underlying(norMedia.sectorSize()) / ThreadX::wordSize>(
+                                                                      reinterpret_cast<ThreadX::Ulong *>(destination_buffer), std::to_underlying(norMedia.sectorSize()) / ThreadX::wordSize)) != LevelX::Error::success)
 #pragma GCC diagnostic pop
         {
             norMedia.driverStatus(FileX::Error::ioError);
@@ -368,10 +353,7 @@ void norFlashSimulatorMediaDriver(NorMedia &norMedia)
 /* Write boot sector to NOR flash.  */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-align"
-        if (norMedia.m_norFlash.writeSector(
-                LevelX::norBootSector,
-                std::span<ThreadX::Ulong, std::to_underlying(norMedia.sectorSize()) / ThreadX::wordSize>{
-                    reinterpret_cast<ThreadX::Ulong *>(source_buffer), LevelX::norSectorSizeInWord}) !=
+        if (norMedia.m_norFlash.writeSector(LevelX::norBootSector, std::span<ThreadX::Ulong, std::to_underlying(norMedia.sectorSize()) / ThreadX::wordSize>{reinterpret_cast<ThreadX::Ulong *>(source_buffer), LevelX::norSectorSizeInWord}) !=
             LevelX::Error::success)
 #pragma GCC diagnostic pop
         {

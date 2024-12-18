@@ -99,23 +99,15 @@ struct PrintName
 };
 
 Device::Device()
-    : m_memoryPool("byte pool"), m_thread0("thread 0", m_memoryPool, thread0StackSize, PrintName(), 1, 1),
-      m_thread1("thread 1", m_memoryPool, thread1StackSize, PrintName(), 16, 16, 4),
-      m_thread2("thread 2", m_memoryPool, thread2StackSize, PrintName(), 16, 16, 4),
-      m_thread3("thread 3", m_memoryPool, thread3StackSize, PrintName(), 8, 8),
-      m_thread4("thread 4", m_memoryPool, thread4StackSize, PrintName(), 8, 8),
-      m_thread5("thread 5", m_memoryPool, thread5StackSize, PrintName(), 4, 4),
-      m_thread6("thread 6", m_memoryPool, thread6StackSize, PrintName(), 8, 8),
-      m_thread7("thread 7", m_memoryPool, thread7StackSize, PrintName(), 8, 8),
-      m_thread8("thread 8", m_memoryPool, thread8StackSize, PrintName()),
-      m_thread9("thread 9", m_memoryPool, thread9StackSize),
-      m_threadRamFileSystem("thread ram FS", m_memoryPool, threadRamFileSystemStackSize, PrintName(), ramMem),
+    : m_memoryPool("byte pool"), m_thread0("thread 0", m_memoryPool, thread0StackSize, PrintName(), 1, 1), m_thread1("thread 1", m_memoryPool, thread1StackSize, PrintName(), 16, 16, 4),
+      m_thread2("thread 2", m_memoryPool, thread2StackSize, PrintName(), 16, 16, 4), m_thread3("thread 3", m_memoryPool, thread3StackSize, PrintName(), 8, 8), m_thread4("thread 4", m_memoryPool, thread4StackSize, PrintName(), 8, 8),
+      m_thread5("thread 5", m_memoryPool, thread5StackSize, PrintName(), 4, 4), m_thread6("thread 6", m_memoryPool, thread6StackSize, PrintName(), 8, 8), m_thread7("thread 7", m_memoryPool, thread7StackSize, PrintName(), 8, 8),
+      m_thread8("thread 8", m_memoryPool, thread8StackSize, PrintName()), m_thread9("thread 9", m_memoryPool, thread9StackSize), m_threadRamFileSystem("thread ram FS", m_memoryPool, threadRamFileSystemStackSize, PrintName(), ramMem),
       m_threadNorFileSystem("thread nor FS", m_memoryPool, threadNorFileSystemStackSize, PrintName()),
 #if 0
       m_threadNandFileSystem("thread nand FS", m_memoryPool, threadNandFileSystemStackSize, PrintName()),
 #endif
-      m_mutex(), m_semaphore("semaphore 1", 1), m_eventFlags("event flags 1"),
-      m_queue("queue 1", m_memoryPool, queueSize, std::bind_front(&Thread2::queueCallback, &m_thread2))
+      m_mutex(), m_semaphore("semaphore 1", 1), m_eventFlags("event flags 1"), m_queue("queue 1", m_memoryPool, queueSize, std::bind_front(&Thread2::queueCallback, &m_thread2))
 {
 }
 
@@ -151,11 +143,8 @@ void Thread0::entryCallback()
     }
 }
 
-Thread1::Thread1(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
-                 const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority, ThreadX::Uint preamptionThresh,
-                 ThreadX::Ulong timeSlice)
-    : Thread(name, pool, stackSize, entryExitNotifyCallback, priority, preamptionThresh, timeSlice),
-      m_timer1("timer1", 500ms, std::bind_front(&Thread1::timerCallback, this)),
+Thread1::Thread1(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority, ThreadX::Uint preamptionThresh, ThreadX::Ulong timeSlice)
+    : Thread(name, pool, stackSize, entryExitNotifyCallback, priority, preamptionThresh, timeSlice), m_timer1("timer1", 500ms, std::bind_front(&Thread1::timerCallback, this)),
       m_timer2("timer2", 1s, std::bind_front(&Thread1::timerCallback, this))
 {
 }
@@ -200,11 +189,8 @@ void Thread1::timerCallback(const uint32_t id)
     }
 }
 
-Thread2::Thread2(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
-                 const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority, ThreadX::Uint preamptionThresh,
-                 ThreadX::Ulong timeSlice)
-    : Thread(name, pool, stackSize, entryExitNotifyCallback, priority, preamptionThresh, timeSlice),
-      m_timer("timer3", 2s, std::bind_front(&Thread2::timerCallback, this))
+Thread2::Thread2(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority, ThreadX::Uint preamptionThresh, ThreadX::Ulong timeSlice)
+    : Thread(name, pool, stackSize, entryExitNotifyCallback, priority, preamptionThresh, timeSlice), m_timer("timer3", 2s, std::bind_front(&Thread2::timerCallback, this))
 {
 }
 
@@ -397,9 +383,7 @@ void RamMedia::driverCallback()
     ramMediaDriver(*this);
 }
 
-ThreadRamFileSystem::ThreadRamFileSystem(
-    const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
-    const Thread::NotifyCallback &notifyCallback, [[maybe_unused]] std::byte *driverInfoPtr)
+ThreadRamFileSystem::ThreadRamFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const Thread::NotifyCallback &notifyCallback, [[maybe_unused]] std::byte *driverInfoPtr)
     : Thread(name, pool, stackSize, notifyCallback), m_media(driverInfoPtr)
 {
 }
@@ -486,14 +470,12 @@ void NorMedia::driverCallback()
     norFlashSimulatorMediaDriver(*this);
 }
 
-LevelX::Error NorFlashDriver::readCallback(
-    ThreadX::Ulong *flashAddress, ThreadX::Ulong *destination, const ThreadX::Ulong words)
+LevelX::Error NorFlashDriver::readCallback(ThreadX::Ulong *flashAddress, ThreadX::Ulong *destination, const ThreadX::Ulong words)
 {
     return norFlashSimulatorRead(flashAddress, destination, words);
 }
 
-LevelX::Error NorFlashDriver::writeCallback(
-    ThreadX::Ulong *flashAddress, const ThreadX::Ulong *source, const ThreadX::Ulong words)
+LevelX::Error NorFlashDriver::writeCallback(ThreadX::Ulong *flashAddress, const ThreadX::Ulong *source, const ThreadX::Ulong words)
 {
     return norFlashSimulatorWrite(flashAddress, source, words);
 }
@@ -508,10 +490,8 @@ LevelX::Error NorFlashDriver::verifyErasedBlockCallback(const ThreadX::Ulong blo
     return norFlashSimulatorBlockErasedVerify(block);
 }
 
-ThreadNorFileSystem::ThreadNorFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
-                                         const Thread::NotifyCallback &notifyCallback)
-    : Thread(name, pool, stackSize, notifyCallback),
-      m_norFlash(sizeof(norMem), reinterpret_cast<ThreadX::Ulong>(norMem)), m_media{m_norFlash}
+ThreadNorFileSystem::ThreadNorFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const Thread::NotifyCallback &notifyCallback)
+    : Thread(name, pool, stackSize, notifyCallback), m_norFlash(sizeof(norMem), reinterpret_cast<ThreadX::Ulong>(norMem)), m_media{m_norFlash}
 {
 }
 

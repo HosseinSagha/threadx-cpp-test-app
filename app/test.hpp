@@ -26,14 +26,12 @@ inline constexpr ThreadX::Ulong threadNandFileSystemStackSize{8 * ThreadX::minim
 #endif
 inline constexpr ThreadX::Ulong queueSize{100};
 
-inline constexpr ThreadX::Ulong threadMemPoolSize{ThreadX::minimumPoolSize(
-    {{thread0StackSize, thread1StackSize, thread2StackSize, thread3StackSize, thread4StackSize, thread5StackSize,
-      thread6StackSize, thread7StackSize, thread8StackSize, thread9StackSize, threadRamFileSystemStackSize,
-      threadNorFileSystemStackSize,
+inline constexpr ThreadX::Ulong threadMemPoolSize{ThreadX::minimumPoolSize({{thread0StackSize, thread1StackSize, thread2StackSize, thread3StackSize, thread4StackSize, thread5StackSize, thread6StackSize, thread7StackSize, thread8StackSize,
+                                                                             thread9StackSize, threadRamFileSystemStackSize, threadNorFileSystemStackSize,
 #if 0
        threadNandFileSystemStackSize,
 #endif
-      ThreadX::Ulong{sizeof(uint32_t) * queueSize}}})};
+                                                                             ThreadX::Ulong{sizeof(uint32_t) * queueSize}}})};
 
 inline constexpr ThreadX::Ulong traceBufferSize{32'000};
 inline constexpr size_t loggerStringReservedMemory{256};
@@ -65,9 +63,7 @@ class Thread0 : public Thread
 class Thread1 : public Thread
 {
   public:
-    Thread1(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
-            const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority, ThreadX::Uint preamptionThresh,
-            ThreadX::Ulong timeSlice);
+    Thread1(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority, ThreadX::Uint preamptionThresh, ThreadX::Ulong timeSlice);
     virtual ~Thread1() = default;
 
   private:
@@ -85,9 +81,7 @@ class Thread1 : public Thread
 class Thread2 : public Thread
 {
   public:
-    Thread2(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
-            const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority, ThreadX::Uint preamptionThresh,
-            ThreadX::Ulong timeSlice);
+    Thread2(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority, ThreadX::Uint preamptionThresh, ThreadX::Ulong timeSlice);
     virtual ~Thread2() = default;
 
     void queueCallback(MsgQueue &queue);
@@ -175,8 +169,7 @@ class RamMedia : public FileX::Media<>
 class ThreadRamFileSystem : public Thread
 {
   public:
-    ThreadRamFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
-                        const Thread::NotifyCallback &notifyCallback, std::byte *driverInfoPtr);
+    ThreadRamFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const Thread::NotifyCallback &notifyCallback, std::byte *driverInfoPtr);
     virtual ~ThreadRamFileSystem() = default;
 
   private:
@@ -191,10 +184,8 @@ class NorFlashDriver : public NorFlash
     using NorFlash::NorFlash;
     virtual ~NorFlashDriver() = default;
 
-    LevelX::Error readCallback(
-        ThreadX::Ulong *flashAddress, ThreadX::Ulong *destination, const ThreadX::Ulong words) final;
-    LevelX::Error writeCallback(
-        ThreadX::Ulong *flashAddress, const ThreadX::Ulong *source, const ThreadX::Ulong words) final;
+    LevelX::Error readCallback(ThreadX::Ulong *flashAddress, ThreadX::Ulong *destination, const ThreadX::Ulong words) final;
+    LevelX::Error writeCallback(ThreadX::Ulong *flashAddress, const ThreadX::Ulong *source, const ThreadX::Ulong words) final;
     LevelX::Error eraseBlockCallback(const ThreadX::Ulong block, const ThreadX::Ulong eraseCount) final;
     LevelX::Error verifyErasedBlockCallback(const ThreadX::Ulong block) final;
 };
@@ -213,8 +204,7 @@ class NorMedia : public FileX::Media<NorFlash::sectorSize()>
 class ThreadNorFileSystem : public Thread
 {
   public:
-    ThreadNorFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
-                        const Thread::NotifyCallback &notifyCallback);
+    ThreadNorFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const Thread::NotifyCallback &notifyCallback);
     virtual ~ThreadNorFileSystem() = default;
 
   private:

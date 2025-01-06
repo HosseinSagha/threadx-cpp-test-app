@@ -4,6 +4,7 @@
         "*.h": "c",
         "*.cpp": "cpp",
         "*.hpp": "cpp",
+        "*.tcc": "cpp",
         "*.tpp": "cpp",
         "array": "cpp",
         "atomic": "cpp",
@@ -79,7 +80,8 @@
         "xutility": "cpp",
         "climits": "cpp",
         "forward_list": "cpp",
-        "iostream": "cpp"
+        "iostream": "cpp",
+        "text_encoding": "cpp"
     },
     "editor.formatOnSave": true,
     "clang-format.executable": "clang-format",

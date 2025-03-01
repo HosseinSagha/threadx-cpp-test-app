@@ -37,7 +37,7 @@
 ENTRY(Reset_Handler)
 
 _Stack_Size = 0x400; /* required amount of stack */
-_Ram_End = ORIGIN(RAM) + LENGTH(RAM) - LENGTH(RAM2);
+_Ram_End = ORIGIN(RAM) + LENGTH(RAM);
 
 /* Memories definition */
 MEMORY

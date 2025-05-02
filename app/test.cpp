@@ -59,7 +59,7 @@ class Device
     ThreadNandFileSystem m_threadNandFileSystem;
 #endif
     ThreadX::Mutex m_mutex;
-    ThreadX::BinarySemaphore m_semaphore;
+    ThreadX::BinarySemaphore<1> m_semaphore;
     ThreadX::EventFlags m_eventFlags;
     MsgQueue m_queue;
 #ifndef NDEBUG
@@ -99,15 +99,19 @@ struct PrintName
 };
 
 Device::Device()
-    : m_memoryPool("byte pool"), m_thread0("thread 0", m_memoryPool, thread0StackSize, PrintName(), 1, 1), m_thread1("thread 1", m_memoryPool, thread1StackSize, PrintName(), 16, 16, 4),
-      m_thread2("thread 2", m_memoryPool, thread2StackSize, PrintName(), 16, 16, 4), m_thread3("thread 3", m_memoryPool, thread3StackSize, PrintName(), 8, 8), m_thread4("thread 4", m_memoryPool, thread4StackSize, PrintName(), 8, 8),
-      m_thread5("thread 5", m_memoryPool, thread5StackSize, PrintName(), 4, 4), m_thread6("thread 6", m_memoryPool, thread6StackSize, PrintName(), 8, 8), m_thread7("thread 7", m_memoryPool, thread7StackSize, PrintName(), 8, 8),
-      m_thread8("thread 8", m_memoryPool, thread8StackSize, PrintName()), m_thread9("thread 9", m_memoryPool, thread9StackSize), m_threadRamFileSystem("thread ram FS", m_memoryPool, threadRamFileSystemStackSize, PrintName(), ramMem),
+    : m_memoryPool("byte pool"), m_thread0("thread 0", m_memoryPool, thread0StackSize, PrintName(), 1, 1),
+      m_thread1("thread 1", m_memoryPool, thread1StackSize, PrintName(), 16, 16, 4),
+      m_thread2("thread 2", m_memoryPool, thread2StackSize, PrintName(), 16, 16, 4), m_thread3("thread 3", m_memoryPool, thread3StackSize, PrintName(), 8, 8),
+      m_thread4("thread 4", m_memoryPool, thread4StackSize, PrintName(), 8, 8), m_thread5("thread 5", m_memoryPool, thread5StackSize, PrintName(), 4, 4),
+      m_thread6("thread 6", m_memoryPool, thread6StackSize, PrintName(), 8, 8), m_thread7("thread 7", m_memoryPool, thread7StackSize, PrintName(), 8, 8),
+      m_thread8("thread 8", m_memoryPool, thread8StackSize, PrintName()), m_thread9("thread 9", m_memoryPool, thread9StackSize),
+      m_threadRamFileSystem("thread ram FS", m_memoryPool, threadRamFileSystemStackSize, PrintName(), ramMem),
       m_threadNorFileSystem("thread nor FS", m_memoryPool, threadNorFileSystemStackSize, PrintName()),
 #if 0
       m_threadNandFileSystem("thread nand FS", m_memoryPool, threadNandFileSystemStackSize, PrintName()),
 #endif
-      m_mutex(), m_semaphore("semaphore 1", 1), m_eventFlags("event flags 1"), m_queue("queue 1", m_memoryPool, queueSize, std::bind_front(&Thread2::queueCallback, &m_thread2))
+      m_mutex(), m_semaphore("semaphore 1"), m_eventFlags("event flags 1"),
+      m_queue("queue 1", m_memoryPool, queueSize, std::bind_front(&Thread2::queueCallback, &m_thread2))
 {
 }
 
@@ -143,9 +147,10 @@ void Thread0::entryCallback()
     }
 }
 
-Thread1::Thread1(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority, ThreadX::Uint preamptionThresh, ThreadX::Ulong timeSlice)
-    : Thread(name, pool, stackSize, entryExitNotifyCallback, priority, preamptionThresh, timeSlice), m_timer1("timer1", 500ms, std::bind_front(&Thread1::timerCallback, this)),
-      m_timer2("timer2", 1s, std::bind_front(&Thread1::timerCallback, this))
+Thread1::Thread1(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority,
+                 ThreadX::Uint preamptionThresh, ThreadX::Ulong timeSlice)
+    : Thread(name, pool, stackSize, entryExitNotifyCallback, priority, preamptionThresh, timeSlice),
+      m_timer1("timer1", 500ms, std::bind_front(&Thread1::timerCallback, this)), m_timer2("timer2", 1s, std::bind_front(&Thread1::timerCallback, this))
 {
 }
 
@@ -189,8 +194,10 @@ void Thread1::timerCallback(const uint32_t id)
     }
 }
 
-Thread2::Thread2(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority, ThreadX::Uint preamptionThresh, ThreadX::Ulong timeSlice)
-    : Thread(name, pool, stackSize, entryExitNotifyCallback, priority, preamptionThresh, timeSlice), m_timer("timer3", 2s, std::bind_front(&Thread2::timerCallback, this))
+Thread2::Thread2(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority,
+                 ThreadX::Uint preamptionThresh, ThreadX::Ulong timeSlice)
+    : Thread(name, pool, stackSize, entryExitNotifyCallback, priority, preamptionThresh, timeSlice),
+      m_timer("timer3", 2s, std::bind_front(&Thread2::timerCallback, this))
 {
 }
 
@@ -204,22 +211,24 @@ void Thread2::entryCallback()
         /* Increment the thread counter.  */
         m_counter++;
         /* Retrieve a message from the queue.  */
-        auto [error, received_message] = dev.m_queue.receive();
-        if (error != ThreadX::Error::success)
-        {
-            LOG_ERR("%s ThreadX error %u!", queueName, error);
-            break;
+        auto received_message{dev.m_queue.receive()};
+        if (received_message)
+        { /* Check completion status and make sure the message is what we expected.  */
+            if (*received_message != m_messages_received)
+            {
+                LOG_ERR("%s recieved message %u!", name().data(), Error::unexpectedValue);
+                break;
+            }
         }
-        /* Check completion status and make sure the message is what we expected.  */
-        if (received_message != m_messages_received)
+        else
         {
-            LOG_ERR("%s recieved message %u!", name().data(), Error::unexpectedValue);
+            LOG_ERR("%s ThreadX error %u!", queueName, received_message.error());
             break;
         }
 
         /* Otherwise, all is okay.  Increment the received message count.  */
         m_messages_received++;
-        LOG_DBG("%s message received: %u", queueName, received_message);
+        LOG_DBG("%s message received: %u", queueName, *received_message);
         LOG_INFO("No. of message received: %u", m_messages_received);
         LOG_INFO("Timer3 callback counter: %u", timer_counter);
     }
@@ -282,18 +291,17 @@ void Thread5::entryCallback()
         /* Increment the thread counter.  */
         m_counter++;
         /* Wait for event flag 0.  */
-        auto [error, actual_flags] = Device::instance().m_eventFlags.waitAll(0x1);
-        if (error != ThreadX::Error::success)
+        if (auto actual_flags{Device::instance().m_eventFlags.waitAll(0x1)})
         {
-
-            LOG_ERR("%s ThreadX error %u!", threadName, error);
-            break;
+            if (*actual_flags != 0x1)
+            {
+                LOG_ERR("%s error %u!", threadName, Error::unexpectedValue);
+                break;
+            }
         }
-
-        /* Check status.  */
-        if (actual_flags != 0x1)
+        else
         {
-            LOG_ERR("%s error %u!", threadName, Error::unexpectedValue);
+            LOG_ERR("%s ThreadX error %u!", threadName, actual_flags.error());
             break;
         }
 
@@ -383,7 +391,8 @@ void RamMedia::driverCallback()
     ramMediaDriver(*this);
 }
 
-ThreadRamFileSystem::ThreadRamFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const Thread::NotifyCallback &notifyCallback, [[maybe_unused]] std::byte *driverInfoPtr)
+ThreadRamFileSystem::ThreadRamFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const Thread::NotifyCallback &notifyCallback,
+                                         [[maybe_unused]] std::byte *driverInfoPtr)
     : Thread(name, pool, stackSize, notifyCallback), m_media(driverInfoPtr)
 {
 }
@@ -436,20 +445,21 @@ void ThreadRamFileSystem::entryCallback()
             }
 
             std::byte localBuffer[28];
-            ThreadX::Uint actual;
-            if (std::tie(error, actual) = file.read(localBuffer); error != FileX::Error::success)
+            if (auto actual{file.read(localBuffer)})
             {
-                break;
-            }
-
-            if (actual != 28)
-            {
-                LOG_ERR("Error reading file (%s).", name().data());
-                return;
+                if (*actual != 28)
+                {
+                    LOG_ERR("Error reading file (%s).", name().data());
+                    return;
+                }
+                else
+                {
+                    LOG_INFO("Success reading file (%s).", name().data());
+                }
             }
             else
             {
-                LOG_INFO("Success reading file (%s).", name().data());
+                break;
             }
 
             LOG_INFO("%s max stack used: %u%%", name().data(), stackInfo().maxUsedPercent);
@@ -541,20 +551,21 @@ void ThreadNorFileSystem::entryCallback()
             }
 
             std::byte localBuffer[28];
-            ThreadX::Uint actual;
-            if (std::tie(error, actual) = file.read(localBuffer); error != FileX::Error::success)
+            if (auto actual{file.read(localBuffer)})
             {
-                break;
-            }
-
-            if (actual != 28)
-            {
-                LOG_ERR("Error reading file (%s).", name().data());
-                return;
+                if (*actual != 28)
+                {
+                    LOG_ERR("Error reading file (%s).", name().data());
+                    return;
+                }
+                else
+                {
+                    LOG_INFO("Success reading file (%s).", name().data());
+                }
             }
             else
             {
-                LOG_INFO("Success reading file (%s).", name().data());
+                break;
             }
 
             LOG_INFO("%s max stack used: %u%%", name().data(), stackInfo().maxUsedPercent);

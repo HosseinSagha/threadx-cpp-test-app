@@ -35,6 +35,16 @@ enum class Error : size_t
     unknownError
 };
 
+struct Run8
+{
+    void operator()() const;
+};
+
+struct Run9
+{
+    void operator()() const;
+};
+
 class Device
 {
   public:
@@ -43,22 +53,46 @@ class Device
 
     static Device &instance();
     ThreadPool m_memoryPool;
-    Thread0 m_thread0;
-    Thread1 m_thread1;
-    Thread2 m_thread2;
-    Thread3_4 m_thread3;
-    Thread3_4 m_thread4;
-    Thread5 m_thread5;
-    Thread6_7 m_thread6;
-    Thread6_7 m_thread7;
-    Thread8 m_thread8;
-    Thread9 m_thread9;
-    ThreadRamFileSystem m_threadRamFileSystem;
-    ThreadNorFileSystem m_threadNorFileSystem;
+    ThreadAllocator m_threadAllocator;
+
+    Obj0 m_object0;
+    Thread m_thread0;
+
+    Obj1 m_object1;
+    Thread m_thread1;
+
+    Obj2 m_object2;
+    Thread m_thread2;
+
+    Obj3_4 m_object3;
+    Thread m_thread3;
+
+    Obj3_4 m_object4;
+    Thread m_thread4;
+
+    Obj5 m_object5;
+    Thread m_thread5;
+
+    Obj6_7 m_object6;
+    Thread m_thread6;
+
+    Obj6_7 m_object7;
+    Thread m_thread7;
+
+    Thread m_thread8;
+    Thread m_thread9;
+
+    ObjRamFileSystem m_objRamFileSystem;
+    Thread m_threadRamFileSystem;
+
+    ObjNorFileSystem m_objNorFileSystem;
+    Thread m_threadNorFileSystem;
 #if 0
-    ThreadNandFileSystem m_threadNandFileSystem;
+    ObjNandFileSystem m_objNandFileSystem;
+    Thread m_threadNandFileSystem;
+
 #endif
-    ThreadX::Mutex m_mutex;
+
     ThreadX::BinarySemaphore<1> m_semaphore;
     ThreadX::EventFlags m_eventFlags;
     MsgQueue m_queue;
@@ -99,19 +133,27 @@ struct PrintName
 };
 
 Device::Device()
-    : m_memoryPool("byte pool"), m_thread0("thread 0", m_memoryPool, thread0StackSize, PrintName(), 1, 1),
-      m_thread1("thread 1", m_memoryPool, thread1StackSize, PrintName(), 16, 16, 4),
-      m_thread2("thread 2", m_memoryPool, thread2StackSize, PrintName(), 16, 16, 4), m_thread3("thread 3", m_memoryPool, thread3StackSize, PrintName(), 8, 8),
-      m_thread4("thread 4", m_memoryPool, thread4StackSize, PrintName(), 8, 8), m_thread5("thread 5", m_memoryPool, thread5StackSize, PrintName(), 4, 4),
-      m_thread6("thread 6", m_memoryPool, thread6StackSize, PrintName(), 8, 8), m_thread7("thread 7", m_memoryPool, thread7StackSize, PrintName(), 8, 8),
-      m_thread8("thread 8", m_memoryPool, thread8StackSize, PrintName()), m_thread9("thread 9", m_memoryPool, thread9StackSize),
-      m_threadRamFileSystem("thread ram FS", m_memoryPool, threadRamFileSystemStackSize, PrintName(), ramMem),
-      m_threadNorFileSystem("thread nor FS", m_memoryPool, threadNorFileSystemStackSize, PrintName()),
+    : m_memoryPool("byte pool"), m_threadAllocator(m_memoryPool), m_object0{},
+      m_thread0("thread 0", m_threadAllocator, std::bind(&Obj0::run, std::addressof(m_object0)), thread0StackSize, PrintName(), 1, 1), m_object1{},
+      m_thread1("thread 1", m_threadAllocator, std::bind(&Obj1::run, std::addressof(m_object1)), thread1StackSize, PrintName(), 16, 16, 4), m_object2{},
+      m_thread2("thread 2", m_threadAllocator, std::bind(&Obj2::run, std::addressof(m_object2)), thread2StackSize, PrintName(), 16, 16, 4), m_object3{},
+      m_thread3("thread 3", m_threadAllocator, std::bind(&Obj3_4::run, std::addressof(m_object3)), thread3StackSize, PrintName(), 8, 8), m_object4{},
+      m_thread4("thread 4", m_threadAllocator, std::bind(&Obj3_4::run, std::addressof(m_object4)), thread4StackSize, PrintName(), 8, 8), m_object5{},
+      m_thread5("thread 5", m_threadAllocator, std::bind(&Obj5::run, std::addressof(m_object5)), thread5StackSize, PrintName(), 4, 4), m_object6{},
+      m_thread6("thread 6", m_threadAllocator, std::bind(&Obj6_7::run, std::addressof(m_object6)), thread6StackSize, PrintName(), 8, 8), m_object7{},
+      m_thread7("thread 7", m_threadAllocator, std::bind(&Obj6_7::run, std::addressof(m_object7)), thread7StackSize, PrintName(), 8, 8),
+      m_thread8("thread 8", m_threadAllocator, Run8(), thread8StackSize, PrintName()), m_thread9("thread 9", m_threadAllocator, Run9(), thread9StackSize),
+      m_objRamFileSystem(ramMem),
+      m_threadRamFileSystem("thread ram FS", m_threadAllocator, std::bind(&ObjRamFileSystem::run, std::addressof(m_objRamFileSystem)),
+                            threadRamFileSystemStackSize, PrintName()),
+      m_objNorFileSystem(), m_threadNorFileSystem("thread nor FS", m_threadAllocator, std::bind(&ObjNorFileSystem::run, std::addressof(m_objNorFileSystem)),
+                                                  threadNorFileSystemStackSize, PrintName()),
 #if 0
-      m_threadNandFileSystem("thread nand FS", m_memoryPool, threadNandFileSystemStackSize, PrintName()),
+      m_objNandFileSystem(),
+      m_threadNandFileSystem("thread nand FS", m_threadAllocator, std::bind(&ObjNandFileSystem::run, std::addressof(m_objNandFileSystem)), threadNandFileSystemStackSize, PrintName()),
 #endif
-      m_mutex(), m_semaphore("semaphore 1"), m_eventFlags("event flags 1"),
-      m_queue("queue 1", m_memoryPool, queueSize, std::bind_front(&Thread2::queueCallback, &m_thread2))
+      m_semaphore("semaphore 1"), m_eventFlags("event flags 1"),
+      m_queue("queue 1", m_threadAllocator, queueSize, [this](auto &queue) { m_object2.queueCallback(queue); })
 {
 }
 
@@ -121,7 +163,7 @@ Device &Device::instance()
     return device;
 }
 
-void Thread0::entryCallback()
+void Obj0::run()
 {
     using namespace std::chrono_literals;
 
@@ -147,14 +189,11 @@ void Thread0::entryCallback()
     }
 }
 
-Thread1::Thread1(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority,
-                 ThreadX::Uint preamptionThresh, ThreadX::Ulong timeSlice)
-    : Thread(name, pool, stackSize, entryExitNotifyCallback, priority, preamptionThresh, timeSlice),
-      m_timer1("timer1", 500ms, std::bind_front(&Thread1::timerCallback, this)), m_timer2("timer2", 1s, std::bind_front(&Thread1::timerCallback, this))
+Obj1::Obj1() : m_timer1("timer1", 500ms, std::bind_front(&Obj1::timerCallback, this)), m_timer2("timer2", 1s, std::bind_front(&Obj1::timerCallback, this))
 {
 }
 
-void Thread1::entryCallback()
+void Obj1::run()
 {
     auto &dev{Device::instance()};
     /* This thread simply sends messages to a queue shared by thread 2.  */
@@ -180,7 +219,7 @@ void Thread1::entryCallback()
     }
 }
 
-void Thread1::timerCallback(const uint32_t id)
+void Obj1::timerCallback(const uint32_t id)
 {
     // timer is handled in interrupt (TX_TIMER_PROCESS_IN_ISR is enabled). So cannot call logger from here because it
     // cannot lock the mutex and returns with error.
@@ -194,14 +233,11 @@ void Thread1::timerCallback(const uint32_t id)
     }
 }
 
-Thread2::Thread2(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority,
-                 ThreadX::Uint preamptionThresh, ThreadX::Ulong timeSlice)
-    : Thread(name, pool, stackSize, entryExitNotifyCallback, priority, preamptionThresh, timeSlice),
-      m_timer("timer3", 2s, std::bind_front(&Thread2::timerCallback, this))
+Obj2::Obj2() : m_timer("timer3", 2s, std::bind_front(&Obj2::timerCallback, this))
 {
 }
 
-void Thread2::entryCallback()
+void Obj2::run()
 {
     auto &dev{Device::instance()};
     auto queueName{dev.m_queue.name().data()};
@@ -216,7 +252,7 @@ void Thread2::entryCallback()
         { /* Check completion status and make sure the message is what we expected.  */
             if (*received_message != m_messages_received)
             {
-                LOG_ERR("%s recieved message %u!", name().data(), Error::unexpectedValue);
+                LOG_ERR("%s recieved message %u!", ThreadX::ThisThread::name().data(), Error::unexpectedValue);
                 break;
             }
         }
@@ -234,7 +270,7 @@ void Thread2::entryCallback()
     }
 }
 
-void Thread2::timerCallback(const uint32_t callbackID)
+void Obj2::timerCallback(const uint32_t callbackID)
 {
     // timer is handled in interrupt (TX_TIMER_PROCESS_IN_ISR is enabled). So cannot call logger from here because it
     // cannot lock the mutex and returns with error.
@@ -244,12 +280,12 @@ void Thread2::timerCallback(const uint32_t callbackID)
     }
 }
 
-void Thread2::queueCallback(MsgQueue &queue)
+void Obj2::queueCallback(MsgQueue &queue)
 {
     LOG_INFO("%s message callback called.", queue.name().data());
 }
 
-void Thread3_4::entryCallback()
+void Obj3_4::run()
 {
     auto &dev{Device::instance()};
     auto semaphoreName{dev.m_semaphore.name().data()};
@@ -282,9 +318,9 @@ void Thread3_4::entryCallback()
     }
 }
 
-void Thread5::entryCallback()
+void Obj5::run()
 {
-    const auto threadName{name().data()};
+    const auto threadName{ThreadX::ThisThread::name().data()};
     /* This thread simply waits for an event in a forever loop.  */
     while (1)
     {
@@ -309,10 +345,10 @@ void Thread5::entryCallback()
     }
 }
 
-void Thread6_7::entryCallback()
+void Obj6_7::run()
 {
-    auto &dev{Device::instance()};
     ThreadX::Error error{};
+    ThreadX::Mutex mutex{};
     /* This function is executed from thread 6 and thread 7.  As the loop
        below shows, these function compete for ownership of mutex_0.  */
     while (1)
@@ -320,7 +356,7 @@ void Thread6_7::entryCallback()
         /* Increment the thread counter.  */
         m_counter++;
         /* Get the mutex with suspension.  */
-        if (error = dev.m_mutex.lock(); error != ThreadX::Error::success)
+        if (error = mutex.lock(); error != ThreadX::Error::success)
         {
             break;
         }
@@ -329,7 +365,7 @@ void Thread6_7::entryCallback()
         /* Get the mutex again with suspension.  This shows
            that an owning thread may retrieve the mutex it
            owns multiple times.  */
-        if (error = dev.m_mutex.lock(); error != ThreadX::Error::success)
+        if (error = mutex.lock(); error != ThreadX::Error::success)
         {
             break;
         }
@@ -338,7 +374,7 @@ void Thread6_7::entryCallback()
         /* Sleep for 2 ticks to hold the mutex.  */
         ThreadX::ThisThread::sleepFor(100ms);
         /* Release the mutex.  */
-        if (error = dev.m_mutex.unlock(); error != ThreadX::Error::success)
+        if (error = mutex.unlock(); error != ThreadX::Error::success)
         {
             break;
         }
@@ -346,7 +382,7 @@ void Thread6_7::entryCallback()
         LOG_INFO("mutex unlocked.");
         /* Release the mutex again.  This will actually
            release ownership since it was obtained twice.  */
-        if (error = dev.m_mutex.unlock(); error != ThreadX::Error::success)
+        if (error = mutex.unlock(); error != ThreadX::Error::success)
         {
             break;
         }
@@ -354,29 +390,29 @@ void Thread6_7::entryCallback()
         LOG_INFO("mutex unlocked.");
     }
 
-    LOG_ERR("%s ThreadX error %u!", name().data(), error);
+    LOG_ERR("%s ThreadX error %u!", ThreadX::ThisThread::name().data(), error);
 }
 
-void Thread8::entryCallback()
+void Run8::operator()() const
 {
     if (auto error{ThreadX::ThisThread::sleepFor(3s)}; error != ThreadX::Error::success)
     {
-        LOG_ERR("%s ThreadX error %u!", name().data(), error);
+        LOG_ERR("%s ThreadX error %u!", ThreadX::ThisThread::name().data(), error);
     }
 }
 
-void Thread9::entryCallback()
+void Run9::operator()() const
 {
     auto &dev{Device::instance()};
 
     while (1)
     {
         dev.m_thread8.join();
-        LOG_INFO("%s joined to %s.", dev.m_thread8.name().data(), name().data());
+        LOG_INFO("%s joined to %s.", dev.m_thread8.name().data(), ThreadX::ThisThread::name().data());
 
         if (auto error{dev.m_thread8.restart()}; error != ThreadX::Error::success)
         {
-            LOG_ERR("%s ThreadX error %u!", name().data(), error);
+            LOG_ERR("%s ThreadX error %u!", ThreadX::ThisThread::name().data(), error);
             break;
         }
     }
@@ -391,13 +427,11 @@ void RamMedia::driverCallback()
     ramMediaDriver(*this);
 }
 
-ThreadRamFileSystem::ThreadRamFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const Thread::NotifyCallback &notifyCallback,
-                                         [[maybe_unused]] std::byte *driverInfoPtr)
-    : Thread(name, pool, stackSize, notifyCallback), m_media(driverInfoPtr)
+ObjRamFileSystem::ObjRamFileSystem(std::byte *driverInfoPtr) : m_media(driverInfoPtr)
 {
 }
 
-void ThreadRamFileSystem::entryCallback()
+void ObjRamFileSystem::run()
 {
     FileX::Error error{m_media.open("ram media")};
 
@@ -449,12 +483,12 @@ void ThreadRamFileSystem::entryCallback()
             {
                 if (*actual != 28)
                 {
-                    LOG_ERR("Error reading file (%s).", name().data());
+                    LOG_ERR("Error reading file (%s).", ThreadX::ThisThread::name().data());
                     return;
                 }
                 else
                 {
-                    LOG_INFO("Success reading file (%s).", name().data());
+                    LOG_INFO("Success reading file (%s).", ThreadX::ThisThread::name().data());
                 }
             }
             else
@@ -462,13 +496,13 @@ void ThreadRamFileSystem::entryCallback()
                 break;
             }
 
-            LOG_INFO("%s max stack used: %u%%", name().data(), stackInfo().maxUsedPercent);
+            //       LOG_INFO("%s max stack used: %u%%", ThreadX::ThisThread::name().data(), stackInfo().maxUsedPercent); TODO
 
             ThreadX::ThisThread::sleepFor(1s);
         };
     } while (0);
 
-    LOG_ERR("%s error %X!", name().data(), error);
+    LOG_ERR("%s error %X!", ThreadX::ThisThread::name().data(), error);
 }
 
 NorMedia::NorMedia(NorFlashDriver &norFlash) : m_norFlash{norFlash}
@@ -500,12 +534,11 @@ LevelX::Error NorFlashDriver::verifyErasedBlockCallback(const ThreadX::Ulong blo
     return norFlashSimulatorBlockErasedVerify(block);
 }
 
-ThreadNorFileSystem::ThreadNorFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const Thread::NotifyCallback &notifyCallback)
-    : Thread(name, pool, stackSize, notifyCallback), m_norFlash(sizeof(norMem), reinterpret_cast<ThreadX::Ulong>(norMem)), m_media{m_norFlash}
+ObjNorFileSystem::ObjNorFileSystem() : m_norFlash(sizeof(norMem), reinterpret_cast<ThreadX::Ulong>(norMem)), m_media{m_norFlash}
 {
 }
 
-void ThreadNorFileSystem::entryCallback()
+void ObjNorFileSystem::run()
 {
     FileX::Error error{m_media.open("nor media")};
     m_media.setFileSystemTime();
@@ -555,12 +588,12 @@ void ThreadNorFileSystem::entryCallback()
             {
                 if (*actual != 28)
                 {
-                    LOG_ERR("Error reading file (%s).", name().data());
+                    LOG_ERR("Error reading file (%s).", ThreadX::ThisThread::name().data());
                     return;
                 }
                 else
                 {
-                    LOG_INFO("Success reading file (%s).", name().data());
+                    LOG_INFO("Success reading file (%s).", ThreadX::ThisThread::name().data());
                 }
             }
             else
@@ -568,13 +601,13 @@ void ThreadNorFileSystem::entryCallback()
                 break;
             }
 
-            LOG_INFO("%s max stack used: %u%%", name().data(), stackInfo().maxUsedPercent);
+            // LOG_INFO("%s max stack used: %u%%", ThreadX::ThisThread::name().data(), stackInfo().maxUsedPercent); TODO
 
             ThreadX::ThisThread::sleepFor(1s);
         };
     } while (0);
 
-    LOG_ERR("%s error 0x%X!", name().data(), error);
+    LOG_ERR("%s error 0x%X!", ThreadX::ThisThread::name().data(), error);
 }
 
 #if 0
@@ -656,9 +689,7 @@ LevelX::Error NandFlashDriver::setExtraBytesCallback(
     return nandFlashSimulatorExtraBytesSet(block, page, source, size);
 }
 
-ThreadNandFileSystem::ThreadNandFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
-                                           const Thread::NotifyCallback &notifyCallback)
-    : Thread(name, pool, stackSize, notifyCallback), m_nandFlash(LevelX::NandSpareDataInfo{4, 4, 2, 2}),
+ObjNandFileSystem::ObjNandFileSystem(): m_nandFlash(LevelX::NandSpareDataInfo{4, 4, 2, 2}),
       m_media{m_nandFlash}
 {
 }
@@ -668,7 +699,7 @@ ThreadX::Native::FX_FILE my_file;
 ThreadX::Native::FX_FILE my_file1;
 unsigned char media_memory[4096];
 
-void ThreadNandFileSystem::entryCallback()
+void ObjNandFileSystem::run()
 {
 #if 1
     FileX::Error error{m_media.open("nand media")};

@@ -26,135 +26,99 @@ inline constexpr ThreadX::Ulong threadNandFileSystemStackSize{8 * ThreadX::minim
 #endif
 inline constexpr ThreadX::Ulong queueSize{100};
 
-inline constexpr ThreadX::Ulong threadMemPoolSize{ThreadX::minimumPoolSize({{thread0StackSize, thread1StackSize, thread2StackSize, thread3StackSize, thread4StackSize, thread5StackSize, thread6StackSize, thread7StackSize, thread8StackSize,
-                                                                             thread9StackSize, threadRamFileSystemStackSize, threadNorFileSystemStackSize,
+inline constexpr ThreadX::Ulong threadMemPoolSize{
+    ThreadX::minimumBytePoolSize({{thread0StackSize, thread1StackSize, thread2StackSize, thread3StackSize, thread4StackSize, thread5StackSize, thread6StackSize,
+                                   thread7StackSize, thread8StackSize, thread9StackSize, threadRamFileSystemStackSize, threadNorFileSystemStackSize,
 #if 0
        threadNandFileSystemStackSize,
 #endif
-                                                                             ThreadX::Ulong{sizeof(uint32_t) * queueSize}}})};
+                                   ThreadX::Ulong{sizeof(uint32_t) * queueSize}}})};
 
 inline constexpr ThreadX::Ulong traceBufferSize{32'000};
 inline constexpr size_t loggerStringReservedMemory{256};
 
 using ThreadPool = ThreadX::BytePool<threadMemPoolSize>;
-using Thread = ThreadX::Thread<ThreadPool>;
-using MsgQueue = ThreadX::Queue<uint32_t, ThreadPool>;
+using ThreadAllocator = ThreadX::Allocator<ThreadPool>;
+using Thread = ThreadX::Thread<ThreadAllocator>;
+using MsgQueue = ThreadX::Queue<uint32_t, ThreadAllocator>;
 using NorFlash = LevelX::NorFlash<4>;
 #if 0
 inline constexpr auto nandBlocks{4};
 using NandFlash = LevelX::NandFlash<nandBlocks, 4, 512 + 16>;
 #endif
-
+//static inline std::vector<std::byte> m_ramStorage{2048};
 inline constexpr auto norStorageSize{8 * 1024};
 inline constexpr auto norBlocks{norStorageSize / sizeof(NorFlash::Block)};
 
-class Thread0 : public Thread
+class Obj0
 {
   public:
-    using Thread::Thread;
-    virtual ~Thread0() = default;
+    void run();
 
   private:
-    void entryCallback() final;
-
     uint32_t m_counter{};
 };
 
-class Thread1 : public Thread
+class Obj1
 {
   public:
-    Thread1(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority, ThreadX::Uint preamptionThresh, ThreadX::Ulong timeSlice);
-    virtual ~Thread1() = default;
+    Obj1();
+
+    void run();
 
   private:
-    void entryCallback() final;
     void timerCallback(const uint32_t callbackID);
 
-    uint32_t m_counter{};
-    uint32_t m_messages_sent{};
     ThreadX::TickTimer m_timer1;
     ThreadX::TickTimer m_timer2;
+    uint32_t m_counter{};
+    uint32_t m_messages_sent{};
     uint32_t timer1_counter{};
     uint32_t timer2_counter{};
 };
 
-class Thread2 : public Thread
+class Obj2
 {
   public:
-    Thread2(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const NotifyCallback &entryExitNotifyCallback, ThreadX::Uint priority, ThreadX::Uint preamptionThresh, ThreadX::Ulong timeSlice);
-    virtual ~Thread2() = default;
+    Obj2();
 
+    void run();
     void queueCallback(MsgQueue &queue);
 
   private:
-    void entryCallback() final;
     void timerCallback(const uint32_t callbackID);
 
+    ThreadX::TickTimer m_timer;
     uint32_t m_counter{};
     uint32_t m_messages_received{};
-    ThreadX::TickTimer m_timer;
     uint32_t timer_counter{};
 };
 
-class Thread3_4 : public Thread
+class Obj3_4
 {
   public:
-    using Thread::Thread;
-
-    virtual ~Thread3_4() = default;
+    void run();
 
   private:
-    void entryCallback() final;
-
     uint32_t m_counter{};
 };
 
-class Thread5 : public Thread
+class Obj5
 {
   public:
-    using Thread::Thread;
-
-    virtual ~Thread5() = default;
+    void run();
 
   private:
-    void entryCallback() final;
-
     uint32_t m_counter{};
 };
 
-class Thread6_7 : public Thread
+class Obj6_7
 {
   public:
-    using Thread::Thread;
-
-    virtual ~Thread6_7() = default;
+    void run();
 
   private:
-    void entryCallback() final;
-
     uint32_t m_counter{};
-};
-
-class Thread8 : public Thread
-{
-  public:
-    using Thread<ThreadPool>::Thread;
-
-    virtual ~Thread8() = default;
-
-  private:
-    void entryCallback() final;
-};
-
-class Thread9 : public Thread
-{
-  public:
-    using Thread::Thread;
-
-    virtual ~Thread9() = default;
-
-  private:
-    void entryCallback() final;
 };
 
 class RamMedia : public FileX::Media<>
@@ -166,15 +130,13 @@ class RamMedia : public FileX::Media<>
     void driverCallback() final;
 };
 
-class ThreadRamFileSystem : public Thread
+class ObjRamFileSystem
 {
   public:
-    ThreadRamFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const Thread::NotifyCallback &notifyCallback, std::byte *driverInfoPtr);
-    virtual ~ThreadRamFileSystem() = default;
+    ObjRamFileSystem(std::byte *driverInfoPtr);
+    void run();
 
   private:
-    void entryCallback() final;
-
     RamMedia m_media;
 };
 
@@ -201,15 +163,13 @@ class NorMedia : public FileX::Media<NorFlash::sectorSize()>
     NorFlashDriver &m_norFlash;
 };
 
-class ThreadNorFileSystem : public Thread
+class ObjNorFileSystem
 {
   public:
-    ThreadNorFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize, const Thread::NotifyCallback &notifyCallback);
-    virtual ~ThreadNorFileSystem() = default;
+    ObjNorFileSystem();
+    void run();
 
   private:
-    void entryCallback() final;
-
     NorFlashDriver m_norFlash;
     NorMedia m_media;
 };
@@ -254,16 +214,11 @@ class NandMedia : public FileX::Media<NandFlash::sectorSize()>
     NandFlashDriver &m_nandFlash;
 };
 
-class ThreadNandFileSystem : public Thread
-{
+class ObjNandFileSystem
   public:
-    ThreadNandFileSystem(const std::string_view name, ThreadPool &pool, ThreadX::Ulong stackSize,
-                         const Thread::NotifyCallback &notifyCallback);
-    virtual ~ThreadNandFileSystem() = default;
+    void run();
 
   private:
-    void entryCallback() final;
-
     NandFlashDriver m_nandFlash;
     NandMedia m_media;
 };

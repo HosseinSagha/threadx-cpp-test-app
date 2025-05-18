@@ -93,7 +93,7 @@ class Device
 
 #endif
 
-    ThreadX::BinarySemaphore<1> m_semaphore;
+    ThreadX::BinarySemaphore m_semaphore;
     ThreadX::EventFlags m_eventFlags;
     MsgQueue m_queue;
 #ifndef NDEBUG
@@ -152,7 +152,7 @@ Device::Device()
       m_objNandFileSystem(),
       m_threadNandFileSystem("thread nand FS", m_threadAllocator, std::bind(&ObjNandFileSystem::run, std::addressof(m_objNandFileSystem)), threadNandFileSystemStackSize, PrintName()),
 #endif
-      m_semaphore("semaphore 1"), m_eventFlags("event flags 1"),
+      m_semaphore("semaphore 1", 1), m_eventFlags("event flags 1"),
       m_queue("queue 1", m_threadAllocator, queueSize, [this](auto &queue) { m_object2.queueCallback(queue); })
 {
 }
@@ -496,8 +496,6 @@ void ObjRamFileSystem::run()
                 break;
             }
 
-            //       LOG_INFO("%s max stack used: %u%%", ThreadX::ThisThread::name().data(), stackInfo().maxUsedPercent); TODO
-
             ThreadX::ThisThread::sleepFor(1s);
         };
     } while (0);
@@ -600,8 +598,6 @@ void ObjNorFileSystem::run()
             {
                 break;
             }
-
-            // LOG_INFO("%s max stack used: %u%%", ThreadX::ThisThread::name().data(), stackInfo().maxUsedPercent); TODO
 
             ThreadX::ThisThread::sleepFor(1s);
         };

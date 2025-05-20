@@ -8,8 +8,8 @@ class NorMedia;
 
 extern std::byte ramMem[10 * 512];
 
-void ramMediaDriver(RamMedia &ramMedia);
-void norFlashSimulatorMediaDriver(NorMedia &norMedia);
+void ramMediaDriver(FileX::Media<>::InternalDriver &ramMedia);
+void norFlashSimulatorMediaDriver(FileX::Media<NorFlash::sectorSize()>::InternalDriver &norMedia, NorFlash &norFlash);
 #if 0
 void nandFlashSimulatorMediaDriver(NandMedia &norMedia);
 #endif

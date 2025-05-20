@@ -85,6 +85,7 @@ class Device
     ObjRamFileSystem m_objRamFileSystem;
     Thread m_threadRamFileSystem;
 
+    NorFlashSimulatorDriver m_norDriver;
     ObjNorFileSystem m_objNorFileSystem;
     Thread m_threadNorFileSystem;
 #if 0
@@ -134,25 +135,34 @@ struct PrintName
 
 Device::Device()
     : m_memoryPool("byte pool"), m_threadAllocator(m_memoryPool), m_object0{},
-      m_thread0("thread 0", m_threadAllocator, std::bind(&Obj0::run, std::addressof(m_object0)), thread0StackSize, PrintName(), 1, 1), m_object1{},
-      m_thread1("thread 1", m_threadAllocator, std::bind(&Obj1::run, std::addressof(m_object1)), thread1StackSize, PrintName(), ThreadX::defaultPriority,
-                ThreadX::defaultPriority, 4),
-      m_object2{}, m_thread2("thread 2", m_threadAllocator, std::bind(&Obj2::run, std::addressof(m_object2)), thread2StackSize, PrintName(),
-                             ThreadX::defaultPriority, ThreadX::defaultPriority, 4),
-      m_object3{}, m_thread3("thread 3", m_threadAllocator, std::bind(&Obj3_4::run, std::addressof(m_object3)), thread3StackSize, PrintName(), 8, 8),
-      m_object4{}, m_thread4("thread 4", m_threadAllocator, std::bind(&Obj3_4::run, std::addressof(m_object4)), thread4StackSize, PrintName(), 8, 8),
-      m_object5{}, m_thread5("thread 5", m_threadAllocator, std::bind(&Obj5::run, std::addressof(m_object5)), thread5StackSize, PrintName(), 4, 4), m_object6{},
-      m_thread6("thread 6", m_threadAllocator, std::bind(&Obj6_7::run, std::addressof(m_object6)), thread6StackSize, PrintName(), 8, 8), m_object7{},
-      m_thread7("thread 7", m_threadAllocator, std::bind(&Obj6_7::run, std::addressof(m_object7)), thread7StackSize, PrintName(), 8, 8),
+      m_thread0(
+          "thread 0", m_threadAllocator, [this]() { m_object0.taskEntryFunction(); }, thread0StackSize, PrintName(), 1, 1),
+      m_object1{}, m_thread1(
+                       "thread 1", m_threadAllocator, [this]() { m_object1.taskEntryFunction(); }, thread1StackSize, PrintName(), ThreadX::defaultPriority,
+                       ThreadX::defaultPriority, 4),
+      m_object2{}, m_thread2(
+                       "thread 2", m_threadAllocator, [this]() { m_object2.taskEntryFunction(); }, thread2StackSize, PrintName(), ThreadX::defaultPriority,
+                       ThreadX::defaultPriority, 4),
+      m_object3{}, m_thread3(
+                       "thread 3", m_threadAllocator, [this]() { m_object3.taskEntryFunction(); }, thread3StackSize, PrintName(), 8, 8),
+      m_object4{}, m_thread4(
+                       "thread 4", m_threadAllocator, [this]() { m_object4.taskEntryFunction(); }, thread4StackSize, PrintName(), 8, 8),
+      m_object5{}, m_thread5(
+                       "thread 5", m_threadAllocator, [this]() { m_object5.taskEntryFunction(); }, thread5StackSize, PrintName(), 4, 4),
+      m_object6{}, m_thread6(
+                       "thread 6", m_threadAllocator, [this]() { m_object6.taskEntryFunction(); }, thread6StackSize, PrintName(), 8, 8),
+      m_object7{}, m_thread7(
+                       "thread 7", m_threadAllocator, [this]() { m_object7.taskEntryFunction(); }, thread7StackSize, PrintName(), 8, 8),
       m_thread8("thread 8", m_threadAllocator, Run8(), thread8StackSize, PrintName()), m_thread9("thread 9", m_threadAllocator, Run9(), thread9StackSize),
       m_objRamFileSystem(ramMem),
-      m_threadRamFileSystem("thread ram FS", m_threadAllocator, std::bind(&ObjRamFileSystem::run, std::addressof(m_objRamFileSystem)),
-                            threadRamFileSystemStackSize, PrintName()),
-      m_objNorFileSystem(), m_threadNorFileSystem("thread nor FS", m_threadAllocator, std::bind(&ObjNorFileSystem::run, std::addressof(m_objNorFileSystem)),
-                                                  threadNorFileSystemStackSize, PrintName()),
+      m_threadRamFileSystem(
+          "thread ram FS", m_threadAllocator, [this]() { m_objRamFileSystem.taskEntryFunction(); }, threadRamFileSystemStackSize, PrintName()),
+      m_norDriver(), m_objNorFileSystem(m_norDriver),
+      m_threadNorFileSystem(
+          "thread nor FS", m_threadAllocator, [this]() { m_objNorFileSystem.taskEntryFunction(); }, threadNorFileSystemStackSize, PrintName()),
 #if 0
       m_objNandFileSystem(),
-      m_threadNandFileSystem("thread nand FS", m_threadAllocator, std::bind(&ObjNandFileSystem::run, std::addressof(m_objNandFileSystem)), threadNandFileSystemStackSize, PrintName()),
+      m_threadNandFileSystem("thread nand FS", m_threadAllocator, [this]() { m_objNandFileSystem.taskEntryFunction(); }, threadNandFileSystemStackSize, PrintName()),
 #endif
       m_semaphore("semaphore 1", 1), m_eventFlags("event flags 1"),
       m_queue("queue 1", m_threadAllocator, queueSize, [this](auto &queue) { m_object2.queueCallback(queue); })
@@ -165,7 +175,7 @@ Device &Device::instance()
     return device;
 }
 
-void Obj0::run()
+void Obj0::taskEntryFunction()
 {
     using namespace std::chrono_literals;
 
@@ -191,11 +201,11 @@ void Obj0::run()
     }
 }
 
-Obj1::Obj1() : m_timer1("timer1", 500ms, std::bind_front(&Obj1::timerCallback, this)), m_timer2("timer2", 1s, std::bind_front(&Obj1::timerCallback, this))
+Obj1::Obj1() : m_timer1("timer1", 500ms, [this](auto id) { timerCallback(id); }), m_timer2("timer2", 1s, [this](auto id) { timerCallback(id); })
 {
 }
 
-void Obj1::run()
+void Obj1::taskEntryFunction()
 {
     auto &dev{Device::instance()};
     /* This thread simply sends messages to a queue shared by thread 2.  */
@@ -235,11 +245,11 @@ void Obj1::timerCallback(const uint32_t id)
     }
 }
 
-Obj2::Obj2() : m_timer("timer3", 2s, std::bind_front(&Obj2::timerCallback, this))
+Obj2::Obj2() : m_timer("timer3", 2s, [this](auto id) { timerCallback(id); })
 {
 }
 
-void Obj2::run()
+void Obj2::taskEntryFunction()
 {
     auto &dev{Device::instance()};
     auto queueName{dev.m_queue.name().data()};
@@ -287,7 +297,7 @@ void Obj2::queueCallback(MsgQueue &queue)
     LOG_INFO("%s message callback called.", queue.name().data());
 }
 
-void Obj3_4::run()
+void Obj3_4::taskEntryFunction()
 {
     auto &dev{Device::instance()};
     auto semaphoreName{dev.m_semaphore.name().data()};
@@ -320,7 +330,7 @@ void Obj3_4::run()
     }
 }
 
-void Obj5::run()
+void Obj5::taskEntryFunction()
 {
     const auto threadName{ThreadX::ThisThread::name().data()};
     /* This thread simply waits for an event in a forever loop.  */
@@ -347,7 +357,7 @@ void Obj5::run()
     }
 }
 
-void Obj6_7::run()
+void Obj6_7::taskEntryFunction()
 {
     ThreadX::Error error{};
     ThreadX::Mutex mutex{};
@@ -420,20 +430,11 @@ void Run9::operator()() const
     }
 }
 
-RamMedia::RamMedia(std::byte *driverInfoPtr) : Media(driverInfoPtr)
+ObjRamFileSystem::ObjRamFileSystem(std::byte *driverInfoPtr) : m_media(ramMediaDriver, driverInfoPtr)
 {
 }
 
-void RamMedia::driverCallback()
-{
-    ramMediaDriver(*this);
-}
-
-ObjRamFileSystem::ObjRamFileSystem(std::byte *driverInfoPtr) : m_media(driverInfoPtr)
-{
-}
-
-void ObjRamFileSystem::run()
+void ObjRamFileSystem::taskEntryFunction()
 {
     FileX::Error error{m_media.open("ram media")};
 
@@ -505,40 +506,17 @@ void ObjRamFileSystem::run()
     LOG_ERR("%s error %X!", ThreadX::ThisThread::name().data(), error);
 }
 
-NorMedia::NorMedia(NorFlashDriver &norFlash) : m_norFlash{norFlash}
+void ObjNorFileSystem::mediaDriverCallback(FileX::Media<NorFlash::sectorSize()>::InternalDriver &media)
+{
+    norFlashSimulatorMediaDriver(media, m_norFlash);
+}
+
+ObjNorFileSystem::ObjNorFileSystem(NorFlashSimulatorDriver &norDriver)
+    : m_norFlash(norDriver, sizeof(norMem), reinterpret_cast<ThreadX::Ulong>(norMem)), m_media{[this](auto &media) { mediaDriverCallback(media); }}
 {
 }
 
-void NorMedia::driverCallback()
-{
-    norFlashSimulatorMediaDriver(*this);
-}
-
-LevelX::Error NorFlashDriver::readCallback(ThreadX::Ulong *flashAddress, ThreadX::Ulong *destination, const ThreadX::Ulong words)
-{
-    return norFlashSimulatorRead(flashAddress, destination, words);
-}
-
-LevelX::Error NorFlashDriver::writeCallback(ThreadX::Ulong *flashAddress, const ThreadX::Ulong *source, const ThreadX::Ulong words)
-{
-    return norFlashSimulatorWrite(flashAddress, source, words);
-}
-
-LevelX::Error NorFlashDriver::eraseBlockCallback(const ThreadX::Ulong block, const ThreadX::Ulong eraseCount)
-{
-    return norFlashSimulatorBlockErase(block, eraseCount);
-}
-
-LevelX::Error NorFlashDriver::verifyErasedBlockCallback(const ThreadX::Ulong block)
-{
-    return norFlashSimulatorBlockErasedVerify(block);
-}
-
-ObjNorFileSystem::ObjNorFileSystem() : m_norFlash(sizeof(norMem), reinterpret_cast<ThreadX::Ulong>(norMem)), m_media{m_norFlash}
-{
-}
-
-void ObjNorFileSystem::run()
+void ObjNorFileSystem::taskEntryFunction()
 {
     FileX::Error error{m_media.open("nor media")};
     m_media.setFileSystemTime();
@@ -697,7 +675,7 @@ ThreadX::Native::FX_FILE my_file;
 ThreadX::Native::FX_FILE my_file1;
 unsigned char media_memory[4096];
 
-void ObjNandFileSystem::run()
+void ObjNandFileSystem::taskEntryFunction()
 {
 #if 1
     FileX::Error error{m_media.open("nand media")};
@@ -881,7 +859,7 @@ void ObjNandFileSystem::run()
         status = ThreadX::Native::fx_file_read(&my_file, local_buffer, 28, &actual);
 
         /* Check the file read status.  */
-        if ((status != FX_SUCCESS) || (actual != 28))
+        if ((status != FX_SUCCESS) or (actual != 28))
         {
 
             /* Error reading file, break the loop.  */

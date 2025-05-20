@@ -13,31 +13,40 @@ alignas(ThreadX::Ulong) NandFlash::Block nandMem[nandBlocks];
 alignas(ThreadX::Ulong) NandFlash::BlockDiag nandBlockDiag[nandBlocks];
 #endif
 
-LevelX::Error norFlashSimulatorRead(ThreadX::Ulong *flash_address, ThreadX::Ulong *destination, ThreadX::Ulong words)
+LevelX::Error NorFlashSimulatorDriver::initialise()
+{
+    return LevelX::Error::success;
+}
+
+LevelX::Error NorFlashSimulatorDriver::read(const ThreadX::Ulong *flashAddress, const std::span<ThreadX::Ulong> destination)
 {
     /* Loop to read flash.  */
-    while (words--)
+    auto remainingWords{destination.size()};
+    auto destinationPtr{destination.data()};
+    while (remainingWords--)
     {
         /* Copy word.  */
-        *destination++ = *flash_address++;
+        *destinationPtr++ = *flashAddress++;
     }
 
     return LevelX::Error::success;
 }
 
-LevelX::Error norFlashSimulatorWrite(ThreadX::Ulong *flash_address, const ThreadX::Ulong *source, ThreadX::Ulong words)
+LevelX::Error NorFlashSimulatorDriver::write(ThreadX::Ulong *flashAddress, const std::span<const ThreadX::Ulong> source)
 {
     /* Loop to write flash.  */
-    while (words--)
+    auto remainingWords{source.size()};
+    auto sourcePtr{source.data()};
+    while (remainingWords--)
     {
         /* Copy word.  */
-        *flash_address++ = *source++;
+        *flashAddress++ = *sourcePtr++;
     }
 
     return LevelX::Error::success;
 }
 
-LevelX::Error norFlashSimulatorBlockErase(const ThreadX::Ulong block, [[maybe_unused]] const ThreadX::Ulong erase_count)
+LevelX::Error NorFlashSimulatorDriver::eraseBlock(const ThreadX::Ulong block, [[maybe_unused]] const ThreadX::Ulong blockCount)
 {
     ThreadX::Ulong *pointer;
     ThreadX::Ulong words;
@@ -57,26 +66,7 @@ LevelX::Error norFlashSimulatorBlockErase(const ThreadX::Ulong block, [[maybe_un
     return LevelX::Error::success;
 }
 
-LevelX::Error norFlashSimulatorEraseAll()
-{
-    ThreadX::Ulong *pointer;
-    ThreadX::Ulong words;
-
-    /* Setup pointer.  */
-    pointer = reinterpret_cast<ThreadX::Ulong *>(&norMem[0]);
-
-    /* Loop to erase block.  */
-    words = sizeof(norMem) / (sizeof(ThreadX::Ulong));
-    while (words--)
-    {
-        /* Erase word of block.  */
-        *pointer++ = 0xFFFFFFFFUL;
-    }
-
-    return LevelX::Error::success;
-}
-
-LevelX::Error norFlashSimulatorBlockErasedVerify(const ThreadX::Ulong block)
+LevelX::Error NorFlashSimulatorDriver::verifyErasedBlock(const ThreadX::Ulong block)
 {
     ThreadX::Ulong *word_ptr;
     ThreadX::Ulong words;
@@ -99,6 +89,30 @@ LevelX::Error norFlashSimulatorBlockErasedVerify(const ThreadX::Ulong block)
     }
 
     /* Return success.  */
+    return LevelX::Error::success;
+}
+
+LevelX::Error NorFlashSimulatorDriver::systemError([[maybe_unused]] const ThreadX::Uint errorCode)
+{
+    return LevelX::Error::success;
+}
+
+LevelX::Error norFlashSimulatorEraseAll()
+{
+    ThreadX::Ulong *pointer;
+    ThreadX::Ulong words;
+
+    /* Setup pointer.  */
+    pointer = reinterpret_cast<ThreadX::Ulong *>(&norMem[0]);
+
+    /* Loop to erase block.  */
+    words = sizeof(norMem) / (sizeof(ThreadX::Ulong));
+    while (words--)
+    {
+        /* Erase word of block.  */
+        *pointer++ = 0xFFFFFFFFUL;
+    }
+
     return LevelX::Error::success;
 }
 
@@ -258,7 +272,7 @@ LevelX::Error nandFlashSimulatorPagesCopy(
     {
         if (auto err{nandFlashSimulatorPagesRead(
                 nandFlash, source_block, source_page + i, data_buffer, data_buffer + nandFlash->pageDataSize(), 1)};
-            err != LevelX::Error::success && err != LevelX::Error::nandErrorCorrected)
+            err != LevelX::Error::success and err != LevelX::Error::nandErrorCorrected)
         {
             return err;
         }

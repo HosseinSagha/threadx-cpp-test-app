@@ -6,13 +6,10 @@
 
 class NorMedia;
 
-extern NorFlash::Block norMem[norBlocks];
 
-LevelX::Error norFlashSimulatorRead(ThreadX::Ulong *flash_address, ThreadX::Ulong *destination, ThreadX::Ulong words);
-LevelX::Error norFlashSimulatorWrite(ThreadX::Ulong *flash_address, const ThreadX::Ulong *source, ThreadX::Ulong words);
-LevelX::Error norFlashSimulatorBlockErase(ThreadX::Ulong const block, const ThreadX::Ulong erase_count);
+
 LevelX::Error norFlashSimulatorEraseAll();
-LevelX::Error norFlashSimulatorBlockErasedVerify(const ThreadX::Ulong block);
+
 #if 0
 LevelX::Error nandFlashSimulatorRead(
     NandFlash *nandFlash, ThreadX::Ulong block, ThreadX::Ulong page, ThreadX::Ulong *destination, ThreadX::Ulong words);

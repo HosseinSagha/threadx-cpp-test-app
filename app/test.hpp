@@ -1,5 +1,6 @@
 #pragma once
 
+#include "flashSimulator.hpp"
 #include "media.hpp"
 #include "memoryPool.hpp"
 #include "nandFlash.hpp"
@@ -37,23 +38,36 @@ inline constexpr ThreadX::Ulong threadMemPoolSize{
 inline constexpr ThreadX::Ulong traceBufferSize{32'000};
 inline constexpr size_t loggerStringReservedMemory{256};
 
+class NorFlashSimulatorDriver
+{
+  public:
+    LevelX::Error initialise();
+    LevelX::Error read(const ThreadX::Ulong *flashAddress, const std::span<ThreadX::Ulong> destination);
+    LevelX::Error write(ThreadX::Ulong *flashAddress, const std::span<const ThreadX::Ulong> source);
+    LevelX::Error eraseBlock(const ThreadX::Ulong block, const ThreadX::Ulong eraseCount);
+    LevelX::Error verifyErasedBlock(const ThreadX::Ulong block);
+    LevelX::Error systemError(const ThreadX::Uint errorCode);
+};
+
 using ThreadPool = ThreadX::BytePool<threadMemPoolSize>;
 using ThreadAllocator = ThreadX::Allocator<ThreadPool>;
 using Thread = ThreadX::Thread<ThreadAllocator>;
 using MsgQueue = ThreadX::Queue<uint32_t, ThreadAllocator>;
-using NorFlash = LevelX::NorFlash<4>;
+using NorFlash = LevelX::NorFlash<4, NorFlashSimulatorDriver>;
+
 #if 0
 inline constexpr auto nandBlocks{4};
 using NandFlash = LevelX::NandFlash<nandBlocks, 4, 512 + 16>;
 #endif
-//static inline std::vector<std::byte> m_ramStorage{2048};
+// static inline std::vector<std::byte> m_ramStorage{2048};
 inline constexpr auto norStorageSize{8 * 1024};
 inline constexpr auto norBlocks{norStorageSize / sizeof(NorFlash::Block)};
+extern NorFlash::Block norMem[norBlocks];
 
 class Obj0
 {
   public:
-    void run();
+    void taskEntryFunction();
 
   private:
     uint32_t m_counter{};
@@ -64,7 +78,7 @@ class Obj1
   public:
     Obj1();
 
-    void run();
+    void taskEntryFunction();
 
   private:
     void timerCallback(const uint32_t callbackID);
@@ -82,7 +96,7 @@ class Obj2
   public:
     Obj2();
 
-    void run();
+    void taskEntryFunction();
     void queueCallback(MsgQueue &queue);
 
   private:
@@ -97,7 +111,7 @@ class Obj2
 class Obj3_4
 {
   public:
-    void run();
+    void taskEntryFunction();
 
   private:
     uint32_t m_counter{};
@@ -106,7 +120,7 @@ class Obj3_4
 class Obj5
 {
   public:
-    void run();
+    void taskEntryFunction();
 
   private:
     uint32_t m_counter{};
@@ -115,63 +129,32 @@ class Obj5
 class Obj6_7
 {
   public:
-    void run();
+    void taskEntryFunction();
 
   private:
     uint32_t m_counter{};
-};
-
-class RamMedia : public FileX::Media<>
-{
-  public:
-    RamMedia(std::byte *driverInfoPtr);
-    virtual ~RamMedia() = default;
-
-    void driverCallback() final;
 };
 
 class ObjRamFileSystem
 {
   public:
     ObjRamFileSystem(std::byte *driverInfoPtr);
-    void run();
+    void taskEntryFunction();
 
   private:
-    RamMedia m_media;
-};
-
-class NorFlashDriver : public NorFlash
-{
-  public:
-    using NorFlash::NorFlash;
-    virtual ~NorFlashDriver() = default;
-
-    LevelX::Error readCallback(ThreadX::Ulong *flashAddress, ThreadX::Ulong *destination, const ThreadX::Ulong words) final;
-    LevelX::Error writeCallback(ThreadX::Ulong *flashAddress, const ThreadX::Ulong *source, const ThreadX::Ulong words) final;
-    LevelX::Error eraseBlockCallback(const ThreadX::Ulong block, const ThreadX::Ulong eraseCount) final;
-    LevelX::Error verifyErasedBlockCallback(const ThreadX::Ulong block) final;
-};
-
-class NorMedia : public FileX::Media<NorFlash::sectorSize()>
-{
-  public:
-    NorMedia(NorFlashDriver &m_norFlash);
-    virtual ~NorMedia() = default;
-
-    void driverCallback() final;
-
-    NorFlashDriver &m_norFlash;
+    FileX::Media<> m_media;
 };
 
 class ObjNorFileSystem
 {
   public:
-    ObjNorFileSystem();
-    void run();
+    ObjNorFileSystem(NorFlashSimulatorDriver &norDriver);
+    void taskEntryFunction();
+    void mediaDriverCallback(FileX::Media<NorFlash::sectorSize()>::InternalDriver &media);
 
   private:
-    NorFlashDriver m_norFlash;
-    NorMedia m_media;
+    NorFlash m_norFlash;
+    FileX::Media<NorFlash::sectorSize()> m_media;
 };
 
 #if 0
@@ -216,7 +199,7 @@ class NandMedia : public FileX::Media<NandFlash::sectorSize()>
 
 class ObjNandFileSystem
   public:
-    void run();
+    void taskEntryFunction();
 
   private:
     NandFlashDriver m_nandFlash;

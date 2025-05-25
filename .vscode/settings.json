@@ -6,6 +6,7 @@
         "*.hpp": "cpp",
         "*.tcc": "cpp",
         "*.tpp": "cpp",
+        "*.in": "cpp",
         "array": "cpp",
         "atomic": "cpp",
         "bit": "cpp",
@@ -100,6 +101,12 @@
     "editor.formatOnSave": true,
     "clang-format.executable": "clang-format",
     "gitHistory.includeRemoteBranches": true,
+    "git.autofetch": "all",
+    "git.fetchOnPull": true,
+    "git.postCommitCommand": "push",
+    "git.pruneOnFetch": true,
+    "git.pullBeforeCheckout": true,
+    "markdown.extension.preview.autoShowPreviewToSide": true,
     "cmake.copyCompileCommands": "${workspaceFolder}/_build/compile_commands.json",
     "cmake.options.advanced": {
         "configurePreset": {

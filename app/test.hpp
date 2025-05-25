@@ -52,7 +52,7 @@ class NorFlashSimulatorDriver
 using ThreadPool = ThreadX::BytePool<threadMemPoolSize>;
 using ThreadAllocator = ThreadX::Allocator<ThreadPool>;
 using Thread = ThreadX::Thread<ThreadAllocator>;
-using MsgQueue = ThreadX::Queue<uint32_t, ThreadAllocator>;
+using MsgQueue = ThreadX::Queue<uint32_t, queueSize, ThreadAllocator>;
 using NorFlash = LevelX::NorFlash<4, NorFlashSimulatorDriver>;
 
 #if 0

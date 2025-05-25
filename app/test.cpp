@@ -165,7 +165,7 @@ Device::Device()
       m_threadNandFileSystem("thread nand FS", m_threadAllocator, [this]() { m_objNandFileSystem.taskEntryFunction(); }, threadNandFileSystemStackSize, PrintName()),
 #endif
       m_semaphore("semaphore 1", 1), m_eventFlags("event flags 1"),
-      m_queue("queue 1", m_threadAllocator, queueSize, [this](auto &queue) { m_object2.queueCallback(queue); })
+      m_queue("queue 1", m_threadAllocator, [this](auto &queue) { m_object2.queueCallback(queue); })
 {
 }
 

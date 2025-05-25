@@ -1,7 +1,7 @@
 #pragma once
 
-#include "fxCommon.hpp"
-#include "lxCommon.hpp"
+#include "threadx-cpp/fxCommon.hpp"
+#include "threadx-cpp/lxCommon.hpp"
 #include "test.hpp"
 
 class NorMedia;

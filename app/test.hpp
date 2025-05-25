@@ -1,13 +1,13 @@
 #pragma once
 
 #include "flashSimulator.hpp"
-#include "media.hpp"
-#include "memoryPool.hpp"
-#include "nandFlash.hpp"
-#include "norFlash.hpp"
-#include "queue.hpp"
-#include "thread.hpp"
-#include "tickTimer.hpp"
+#include "threadx-cpp/media.hpp"
+#include "threadx-cpp/memoryPool.hpp"
+#include "threadx-cpp/nandFlash.hpp"
+#include "threadx-cpp/norFlash.hpp"
+#include "threadx-cpp/queue.hpp"
+#include "threadx-cpp/thread.hpp"
+#include "threadx-cpp/tickTimer.hpp"
 #include <cstddef>
 
 inline constexpr ThreadX::Ulong thread0StackSize{ThreadX::minimumStackSize};

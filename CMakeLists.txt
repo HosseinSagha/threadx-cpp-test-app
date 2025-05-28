@@ -49,9 +49,9 @@ add_compile_definitions(${MCU_LINE}
 #link libs and dirs
 set(LINK_DIRS ${PROJECT_SOURCE_DIR}/app/Middlewares/ST/ARM/DSP/Lib)
 
-configure_file(${PROJECT_SOURCE_DIR}/app/tx_user.h.in ${FETCHCONTENT_BASE_DIR}/tx_user.h)
-configure_file(${PROJECT_SOURCE_DIR}/app/fx_user.h.in ${FETCHCONTENT_BASE_DIR}/fx_user.h)
-configure_file(${PROJECT_SOURCE_DIR}/app/lx_user.h.in ${FETCHCONTENT_BASE_DIR}/lx_user.h)
+configure_file(${PROJECT_SOURCE_DIR}/app/tx_user.h.in ${CMAKE_BINARY_DIR}/tx_user.h)
+configure_file(${PROJECT_SOURCE_DIR}/app/fx_user.h.in ${CMAKE_BINARY_DIR}/fx_user.h)
+configure_file(${PROJECT_SOURCE_DIR}/app/lx_user.h.in ${CMAKE_BINARY_DIR}/lx_user.h)
 
 set(LIBS
     stm32_hal_drivers

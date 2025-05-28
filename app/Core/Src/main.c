@@ -23,7 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <sys/_timeval.h>
-#include "kernel.hpp"
+#include "threadx-cpp/kernel.hpp"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/

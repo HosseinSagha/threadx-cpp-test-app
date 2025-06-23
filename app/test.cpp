@@ -105,6 +105,37 @@ class Device
     Device();
 };
 
+// replacing operator new and delete to use the thread allocator
+void *operator new(std::size_t size)
+{
+    return Device::instance().m_threadAllocator.allocate(size);
+}
+
+void operator delete(void *ptr)
+{
+    Device::instance().m_threadAllocator.deallocate(reinterpret_cast<std::byte *>(ptr), 0);
+}
+
+void operator delete(void *ptr, std::size_t n)
+{
+    Device::instance().m_threadAllocator.deallocate(reinterpret_cast<std::byte *>(ptr), n);
+}
+
+void *operator new[](std::size_t size)
+{
+    return Device::instance().m_threadAllocator.allocate(size);
+}
+
+void operator delete[](void *ptr)
+{
+    Device::instance().m_threadAllocator.deallocate(reinterpret_cast<std::byte *>(ptr), 0);
+}
+
+void operator delete[](void *ptr, std::size_t n)
+{
+    Device::instance().m_threadAllocator.deallocate(reinterpret_cast<std::byte *>(ptr), n);
+}
+
 static void stackErrorCallback(Thread &thread)
 {
     LOG_ERR("Stack Overflow in %s", thread.name().data());
@@ -112,10 +143,9 @@ static void stackErrorCallback(Thread &thread)
 
 void runTestCode()
 {
-    RttLogger::init(RttLogger::Type::debug);
-
-    Thread::registerStackErrorNotifyCallback(stackErrorCallback);
     Device::instance();
+    Thread::registerStackErrorNotifyCallback(stackErrorCallback);
+    RttLogger::init(RttLogger::Type::debug);
 }
 
 struct PrintName

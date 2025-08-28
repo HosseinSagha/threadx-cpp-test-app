@@ -3,8 +3,7 @@
         {
             "name": "Win32",
             "configurationProvider": "ms-vscode.cmake-tools",
-            "intelliSenseMode": "windows-gcc-arm",
-            "compileCommands": "${workspaceFolder}/_build/compile_commands.json"
+            "intelliSenseMode": "windows-gcc-arm"
         }
     ],
     "version": 4

@@ -99,6 +99,7 @@
         "cassert": "cpp"
     },
     "editor.formatOnSave": true,
+    "editor.formatOnSaveMode": "modifications",
     "clang-format.executable": "clang-format",
     "gitHistory.includeRemoteBranches": true,
     "git.autofetch": "all",
@@ -107,7 +108,6 @@
     "git.pruneOnFetch": true,
     "git.pullBeforeCheckout": true,
     "markdown.extension.preview.autoShowPreviewToSide": true,
-    "cmake.copyCompileCommands": "${workspaceFolder}/_build/compile_commands.json",
     "cmake.options.advanced": {
         "configurePreset": {
             "statusBarVisibility": "visible"
@@ -129,20 +129,8 @@
         }
     },
     "cortex-debug.variableUseNaturalFormat": true,
+    "C_Cpp.doxygen.generateOnType": true,
     "C_Cpp.doxygen.generatedStyle": "///",
-    "C_Cpp.doxygen.generateOnType": false,
-    "C_Cpp.doxygen.sectionTags": [
-        "attention",
-        "tparam",
-        "param",
-        "result",
-        "returns",
-        "retval",
-        "exception",
-        "deprecated",
-        "warning",
-        "note"
-    ],
     "doxdocgen.c.commentPrefix": "///",
     "doxdocgen.c.factoryMethodText": "Create a {name} object",
     "doxdocgen.c.firstLine": "",

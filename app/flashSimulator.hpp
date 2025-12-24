@@ -1,12 +1,10 @@
 #pragma once
 
+#include "test.hpp"
 #include "threadx-cpp/fxCommon.hpp"
 #include "threadx-cpp/lxCommon.hpp"
-#include "test.hpp"
 
 class NorMedia;
-
-
 
 LevelX::Error norFlashSimulatorEraseAll();
 

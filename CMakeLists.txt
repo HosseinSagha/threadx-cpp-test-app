@@ -10,8 +10,8 @@ set(MCU_FAMILY STM32L4xx) #MCU HAL driver folder
 set(MCU_LINE STM32L496xx) #MCU line define macro
 set(MCU_TYPE STM32L496ZGTX) #Linker/startup filenames
 
-set(THREADX_VER v6.4.2_rel)
-set(FILEX_VER v6.4.1_rel)
+set(THREADX_VER v6.4.3.202503_rel)
+set(FILEX_VER v6.4.2.202503_rel)
 set(LEVELX_VER v6.4.1_rel)
 
 find_package(Git REQUIRED)
@@ -44,7 +44,7 @@ endif()
 
 add_compile_definitions(${MCU_LINE}
                         SYSTEM_CLOCK=16000000
-                        ) 
+                        )
 
 #link libs and dirs
 set(LINK_DIRS ${PROJECT_SOURCE_DIR}/app/Middlewares/ST/ARM/DSP/Lib)

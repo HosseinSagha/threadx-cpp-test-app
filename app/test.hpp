@@ -28,8 +28,18 @@ inline constexpr ThreadX::Ulong threadNandFileSystemStackSize{8 * ThreadX::minim
 inline constexpr ThreadX::Ulong queueSize{100};
 
 inline constexpr ThreadX::Ulong threadMemPoolSize{
-    ThreadX::minimumBytePoolSize({{thread0StackSize, thread1StackSize, thread2StackSize, thread3StackSize, thread4StackSize, thread5StackSize, thread6StackSize,
-                                   thread7StackSize, thread8StackSize, thread9StackSize, threadRamFileSystemStackSize, threadNorFileSystemStackSize,
+    ThreadX::minimumBytePoolSize({{thread0StackSize,
+                                   thread1StackSize,
+                                   thread2StackSize,
+                                   thread3StackSize,
+                                   thread4StackSize,
+                                   thread5StackSize,
+                                   thread6StackSize,
+                                   thread7StackSize,
+                                   thread8StackSize,
+                                   thread9StackSize,
+                                   threadRamFileSystemStackSize,
+                                   threadNorFileSystemStackSize,
 #if 0
        threadNandFileSystemStackSize,
 #endif

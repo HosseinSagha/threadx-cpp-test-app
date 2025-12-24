@@ -13,12 +13,13 @@ alignas(ThreadX::Ulong) NandFlash::Block nandMem[nandBlocks];
 alignas(ThreadX::Ulong) NandFlash::BlockDiag nandBlockDiag[nandBlocks];
 #endif
 
-LevelX::Error NorFlashSimulatorDriver::initialise()
+[[gnu::const]] LevelX::Error NorFlashSimulatorDriver::initialise()
 {
     return LevelX::Error::success;
 }
 
-LevelX::Error NorFlashSimulatorDriver::read(const ThreadX::Ulong *flashAddress, const std::span<ThreadX::Ulong> destination)
+LevelX::Error NorFlashSimulatorDriver::read(const ThreadX::Ulong *flashAddress,
+                                            const std::span<ThreadX::Ulong> destination)
 {
     /* Loop to read flash.  */
     auto remainingWords{destination.size()};
@@ -46,7 +47,8 @@ LevelX::Error NorFlashSimulatorDriver::write(ThreadX::Ulong *flashAddress, const
     return LevelX::Error::success;
 }
 
-LevelX::Error NorFlashSimulatorDriver::eraseBlock(const ThreadX::Ulong block, [[maybe_unused]] const ThreadX::Ulong blockCount)
+LevelX::Error NorFlashSimulatorDriver::eraseBlock(const ThreadX::Ulong block,
+                                                  [[maybe_unused]] const ThreadX::Ulong blockCount)
 {
     ThreadX::Ulong *pointer;
     ThreadX::Ulong words;
@@ -58,7 +60,6 @@ LevelX::Error NorFlashSimulatorDriver::eraseBlock(const ThreadX::Ulong block, [[
     words = sizeof(NorFlash::Block) / sizeof(ThreadX::Ulong);
     while (words--)
     {
-
         /* Erase word of block.  */
         *pointer++ = 0xFFFFFFFFUL;
     }
@@ -66,7 +67,7 @@ LevelX::Error NorFlashSimulatorDriver::eraseBlock(const ThreadX::Ulong block, [[
     return LevelX::Error::success;
 }
 
-LevelX::Error NorFlashSimulatorDriver::verifyErasedBlock(const ThreadX::Ulong block)
+[[gnu::pure]] LevelX::Error NorFlashSimulatorDriver::verifyErasedBlock(const ThreadX::Ulong block)
 {
     ThreadX::Ulong *word_ptr;
     ThreadX::Ulong words;
@@ -82,7 +83,6 @@ LevelX::Error NorFlashSimulatorDriver::verifyErasedBlock(const ThreadX::Ulong bl
     /* Loop to check if the block is erased.  */
     while (words--)
     {
-
         /* Is this word erased?  */
         if (*word_ptr++ != 0xFFFFFFFF)
             return LevelX::Error::error;
@@ -92,7 +92,7 @@ LevelX::Error NorFlashSimulatorDriver::verifyErasedBlock(const ThreadX::Ulong bl
     return LevelX::Error::success;
 }
 
-LevelX::Error NorFlashSimulatorDriver::systemError([[maybe_unused]] const ThreadX::Uint errorCode)
+[[gnu::const]] LevelX::Error NorFlashSimulatorDriver::systemError([[maybe_unused]] const ThreadX::Uint errorCode)
 {
     return LevelX::Error::success;
 }

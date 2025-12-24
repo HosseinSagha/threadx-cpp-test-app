@@ -111,12 +111,12 @@ void *operator new(std::size_t size)
     return Device::instance().m_threadAllocator.allocate(size);
 }
 
-void operator delete(void *ptr)
+void operator delete(void *ptr) noexcept
 {
     Device::instance().m_threadAllocator.deallocate(reinterpret_cast<std::byte *>(ptr), 0);
 }
 
-void operator delete(void *ptr, std::size_t n)
+void operator delete(void *ptr, std::size_t n) noexcept
 {
     Device::instance().m_threadAllocator.deallocate(reinterpret_cast<std::byte *>(ptr), n);
 }
@@ -126,12 +126,12 @@ void *operator new[](std::size_t size)
     return Device::instance().m_threadAllocator.allocate(size);
 }
 
-void operator delete[](void *ptr)
+void operator delete[](void *ptr) noexcept
 {
     Device::instance().m_threadAllocator.deallocate(reinterpret_cast<std::byte *>(ptr), 0);
 }
 
-void operator delete[](void *ptr, std::size_t n)
+void operator delete[](void *ptr, std::size_t n) noexcept
 {
     Device::instance().m_threadAllocator.deallocate(reinterpret_cast<std::byte *>(ptr), n);
 }
@@ -164,37 +164,69 @@ struct PrintName
 };
 
 Device::Device()
-    : m_memoryPool("byte pool"), m_threadAllocator(m_memoryPool), m_object0{},
+    : m_memoryPool("byte pool"),
+      m_threadAllocator(m_memoryPool),
+      m_object0{},
       m_thread0(
           "thread 0", m_threadAllocator, [this]() { m_object0.taskEntryFunction(); }, thread0StackSize, PrintName(), 1),
-      m_object1{}, m_thread1(
-                       "thread 1", m_threadAllocator, [this]() { m_object1.taskEntryFunction(); }, thread1StackSize, PrintName(), ThreadX::defaultPriority,
-                       ThreadX::defaultPriority, 4),
-      m_object2{}, m_thread2(
-                       "thread 2", m_threadAllocator, [this]() { m_object2.taskEntryFunction(); }, thread2StackSize, PrintName(), ThreadX::defaultPriority,
-                       ThreadX::defaultPriority, 4),
-      m_object3{}, m_thread3(
-                       "thread 3", m_threadAllocator, [this]() { m_object3.taskEntryFunction(); }, thread3StackSize, PrintName(), 8),
-      m_object4{}, m_thread4(
-                       "thread 4", m_threadAllocator, [this]() { m_object4.taskEntryFunction(); }, thread4StackSize, PrintName(), 8),
-      m_object5{}, m_thread5(
-                       "thread 5", m_threadAllocator, [this]() { m_object5.taskEntryFunction(); }, thread5StackSize, PrintName(), 4),
-      m_object6{}, m_thread6(
-                       "thread 6", m_threadAllocator, [this]() { m_object6.taskEntryFunction(); }, thread6StackSize, PrintName(), 8),
-      m_object7{}, m_thread7(
-                       "thread 7", m_threadAllocator, [this]() { m_object7.taskEntryFunction(); }, thread7StackSize, PrintName(), 8),
-      m_thread8("thread 8", m_threadAllocator, Run8(), thread8StackSize, PrintName()), m_thread9("thread 9", m_threadAllocator, Run9(), thread9StackSize),
+      m_object1{},
+      m_thread1(
+          "thread 1",
+          m_threadAllocator,
+          [this]() { m_object1.taskEntryFunction(); },
+          thread1StackSize,
+          PrintName(),
+          ThreadX::defaultPriority,
+          ThreadX::defaultPriority,
+          4),
+      m_object2{},
+      m_thread2(
+          "thread 2",
+          m_threadAllocator,
+          [this]() { m_object2.taskEntryFunction(); },
+          thread2StackSize,
+          PrintName(),
+          ThreadX::defaultPriority,
+          ThreadX::defaultPriority,
+          4),
+      m_object3{},
+      m_thread3(
+          "thread 3", m_threadAllocator, [this]() { m_object3.taskEntryFunction(); }, thread3StackSize, PrintName(), 8),
+      m_object4{},
+      m_thread4(
+          "thread 4", m_threadAllocator, [this]() { m_object4.taskEntryFunction(); }, thread4StackSize, PrintName(), 8),
+      m_object5{},
+      m_thread5(
+          "thread 5", m_threadAllocator, [this]() { m_object5.taskEntryFunction(); }, thread5StackSize, PrintName(), 4),
+      m_object6{},
+      m_thread6(
+          "thread 6", m_threadAllocator, [this]() { m_object6.taskEntryFunction(); }, thread6StackSize, PrintName(), 8),
+      m_object7{},
+      m_thread7(
+          "thread 7", m_threadAllocator, [this]() { m_object7.taskEntryFunction(); }, thread7StackSize, PrintName(), 8),
+      m_thread8("thread 8", m_threadAllocator, Run8(), thread8StackSize, PrintName()),
+      m_thread9("thread 9", m_threadAllocator, Run9(), thread9StackSize),
       m_objRamFileSystem(ramMem),
       m_threadRamFileSystem(
-          "thread ram FS", m_threadAllocator, [this]() { m_objRamFileSystem.taskEntryFunction(); }, threadRamFileSystemStackSize, PrintName()),
-      m_norDriver(), m_objNorFileSystem(m_norDriver),
+          "thread ram FS",
+          m_threadAllocator,
+          [this]() { m_objRamFileSystem.taskEntryFunction(); },
+          threadRamFileSystemStackSize,
+          PrintName()),
+      m_norDriver(),
+      m_objNorFileSystem(m_norDriver),
       m_threadNorFileSystem(
-          "thread nor FS", m_threadAllocator, [this]() { m_objNorFileSystem.taskEntryFunction(); }, threadNorFileSystemStackSize, PrintName()),
+          "thread nor FS",
+          m_threadAllocator,
+          [this]() { m_objNorFileSystem.taskEntryFunction(); },
+          threadNorFileSystemStackSize,
+          PrintName()),
 #if 0
       m_objNandFileSystem(),
       m_threadNandFileSystem("thread nand FS", m_threadAllocator, [this]() { m_objNandFileSystem.taskEntryFunction(); }, threadNandFileSystemStackSize, PrintName()),
 #endif
-      m_semaphore("semaphore 1", 1), m_eventFlags("event flags 1"),
+      m_semaphore("semaphore 1", 1),
+      m_eventFlags("event flags 1"),
       m_queue("queue 1", m_threadAllocator, [this](auto &queue) { m_object2.queueCallback(queue); })
 {
 }
@@ -231,7 +263,9 @@ void Obj0::taskEntryFunction()
     }
 }
 
-Obj1::Obj1() : m_timer1("timer1", 500ms, [this](auto id) { timerCallback(id); }), m_timer2("timer2", 1s, [this](auto id) { timerCallback(id); })
+Obj1::Obj1()
+    : m_timer1("timer1", 500ms, [this](auto id) { timerCallback(id); }),
+      m_timer2("timer2", 1s, [this](auto id) { timerCallback(id); })
 {
 }
 
@@ -275,7 +309,8 @@ void Obj1::timerCallback(const uint32_t id)
     }
 }
 
-Obj2::Obj2() : m_timer("timer3", 2s, [this](auto id) { timerCallback(id); })
+Obj2::Obj2()
+    : m_timer("timer3", 2s, [this](auto id) { timerCallback(id); })
 {
 }
 
@@ -437,7 +472,8 @@ void Obj6_7::taskEntryFunction()
 
 void Run8::operator()() const
 {
-    if (auto error{ThreadX::ThisThread::sleepFor(3s)}; error != ThreadX::Error::success)
+    auto error = ThreadX::ThisThread::sleepFor(3s);
+    if (error != ThreadX::Error::success)
     {
         LOG_ERR("%s ThreadX error %u!", ThreadX::ThisThread::name().data(), error);
     }
@@ -460,7 +496,8 @@ void Run9::operator()() const
     }
 }
 
-ObjRamFileSystem::ObjRamFileSystem(std::byte *driverInfoPtr) : m_media(ramMediaDriver, driverInfoPtr)
+ObjRamFileSystem::ObjRamFileSystem(std::byte *driverInfoPtr)
+    : m_media(ramMediaDriver, driverInfoPtr)
 {
 }
 
@@ -542,7 +579,8 @@ void ObjNorFileSystem::mediaDriverCallback(FileX::Media<NorFlash::sectorSize()>:
 }
 
 ObjNorFileSystem::ObjNorFileSystem(NorFlashSimulatorDriver &norDriver)
-    : m_norFlash(norDriver, sizeof(norMem), reinterpret_cast<ThreadX::Ulong>(norMem)), m_media{[this](auto &media) { mediaDriverCallback(media); }}
+    : m_norFlash(norDriver, sizeof(norMem), reinterpret_cast<ThreadX::Ulong>(norMem)),
+      m_media{[this](auto &media) { mediaDriverCallback(media); }}
 {
 }
 
@@ -937,3 +975,6 @@ void ObjNandFileSystem::taskEntryFunction()
 #endif
 }
 #endif
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-overflow"

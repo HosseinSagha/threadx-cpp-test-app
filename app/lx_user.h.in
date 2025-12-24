@@ -107,12 +107,14 @@
 
 /* #define LX_STANDALONE_ENABLE */
 
-/* Define user extension for NOR flash control block. User extension is placed at the end of flash control block and it is not cleared on opening flash. */
+/* Define user extension for NOR flash control block. User extension is placed at the end of flash control block and it
+ * is not cleared on opening flash. */
 /*
 #define LX_NOR_FLASH_USER_EXTENSION    ????
 */
 
-/* Define user extension for NAND flash control block. User extension is placed at the end of flash control block and it is not cleared on opening flash.  */
+/* Define user extension for NAND flash control block. User extension is placed at the end of flash control block and it
+ * is not cleared on opening flash.  */
 /*
 #define LX_NAND_FLASH_USER_EXTENSION   ????
 */
@@ -130,7 +132,8 @@
 #define LX_NOR_ENABLE_OBSOLETE_COUNT_CACHE
 */
 
-/* Defines obsolete count cache element size. If number of sectors per block is greater than 256, use USHORT instead of UCHAR.  */
+/* Defines obsolete count cache element size. If number of sectors per block is greater than 256, use USHORT instead of
+ * UCHAR.  */
 /*
 #define LX_NOR_OBSOLETE_COUNT_CACHE_TYPE            UCHAR
 */
